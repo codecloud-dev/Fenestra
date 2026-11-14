@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: 内核测试 (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: 格式检查
+        run: cargo fmt --all -- --check
+      - name: 严格静态检查
+        run: cargo clippy --all-targets -- -D warnings
+      - name: 全量测试
+        run: cargo test --all-targets
+      - name: CLI 自检
+        run: cargo run --quiet -- demo
+      - name: 清单校验
+        run: cargo run --quiet -- verify examples/engine.hep
+      - name: 三家扩展归一
+        run: cargo run --quiet -- compat examples/extensions/firefox.json
+
+  android-target:
+    name: Android target 编译检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - name: 检查 aarch64-linux-android
+        run: cargo check --target aarch64-linux-android --lib
+
+  ios-target:
+    name: iOS target 编译检查
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - name: 检查 aarch64-apple-ios
+        run: cargo check --target aarch64-apple-ios --lib
+
+  guard:
+    name: 许可证与零依赖守门
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 校验许可证与内核依赖
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f LICENSE
+          grep -q "源码可见" LICENSE
+          grep -q "source-available" LICENSE
+          grep -q "Hollo Source License" LICENSE
+          python3 - <<'PY'
+          import pathlib, re
+          text = pathlib.Path("Cargo.toml").read_text()
+          m = re.search(r"^\[dependencies\]\s*$([\s\S]*?)(?=^\[|\Z)", text, re.M)
+          assert m is not None, "缺少 [dependencies] 段"
+          meaningful = [
+              line.strip()
+              for line in m.group(1).splitlines()
+              if line.strip() and not line.strip().startswith("#")
+          ]
+          assert not meaningful, f"内核不得引入第三方依赖: {meaningful}"
+          assert "license-file" in text, "Cargo.toml 必须指向自撰许可证"
+          print("零依赖 + 自撰许可证守门通过")
+          PY
+      - name: 文档齐备性
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in README.md README.en.md LICENSE ARCHITECTURE.md SECURITY.md EXTENSIONS.md PRINCIPLES.md ROADMAP.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md; do
+            test -s "$f" || { echo "缺少文档: $f"; exit 1; }
+          done
+          echo "文档齐备"

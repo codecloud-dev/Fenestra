@@ -1,0 +1,9 @@
+# 一个最小的自有 HEP 扩展：只读页面标注
+id: com.example.annotate
+name: Page Annotator
+version: 1.0.0
+kind: other
+entry: annotate.wasm
+capability: ui.content
+capability: storage.read
+origin: https://example.com/*

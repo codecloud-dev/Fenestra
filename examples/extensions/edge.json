@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "Reader for Edge",
+  "version": "2.1.0",
+  "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+  "permissions": ["storage", "tabs"],
+  "background": { "service_worker": "background.js" }
+}

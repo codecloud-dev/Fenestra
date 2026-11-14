@@ -1,0 +1,25 @@
+[package]
+name = "hollo"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Hollo — a browser that is only a shell; everything else is a plugin"
+repository = "https://github.com/codecloud-dev/hollo"
+homepage = "https://github.com/codecloud-dev/hollo"
+readme = "README.md"
+license-file = "LICENSE"
+keywords = ["browser", "plugin", "shell", "sandbox", "extensions"]
+categories = ["command-line-utilities"]
+
+# 内核刻意零第三方依赖。
+# 渲染引擎、网络栈、界面、存储、扩展运行时全部由插件提供，
+# 因此这里不应该出现任何实现性依赖。
+[dependencies]
+
+[lib]
+name = "hollo"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hollo"
+path = "src/main.rs"

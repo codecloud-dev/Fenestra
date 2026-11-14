@@ -1,0 +1,8 @@
+# 地址栏、标签页、窗口全部由 UI 插件提供
+id: org.hollo.ui.minimal
+name: Minimal Shell UI
+version: 0.1.0
+kind: shell-ui
+entry: ui/minimal.wasm
+capability: ui.chrome
+capability: ui.content
