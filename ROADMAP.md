@@ -19,19 +19,19 @@
 **交付清单（都有代码或 CI 可查）**
 
 - [x] Rust 内核，`[dependencies]` 为空
-- [x] HEP v1 清单格式与解析器，单例重复／未知字段／未知能力一律报错
+- [x] FEP v1 清单格式与解析器，单例重复／未知字段／未知能力一律报错
 - [x] 封闭能力枚举、`Grant::intersect` 最小权限交集、`Grant::sanitized`
 - [x] `SandboxPolicy` 三重闸门、`harden()` 锁定模式、`weakened()` 检测
 - [x] `detonate()` → `Untrusted<T>` → `revalidate()` 类型级出站重校验
 - [x] `Registry` 可逆注册，`revoke` 精确撤销服务／订阅／能力
 - [x] 自研迷你 JSON 解析器
-- [x] Chrome / Edge / Firefox `manifest.json` → HEP 归一器 + 差异 warnings
+- [x] Chrome / Edge / Firefox `manifest.json` → FEP 归一器 + 差异 warnings
 - [x] `to_hep()` 双向可审计
 - [x] 五个平台 target 声明与 Rust triple
 - [x] CLI：`verify` / `compat` / `demo` / `policy` / `targets`
 - [x] 39 测试（33 单测 + 6 集成），`cargo fmt --check`、`clippy -D warnings`
 - [x] CI：Linux / Windows / macOS 三平台 + Android / iOS target 编译检查 + 零依赖守门
-- [x] 自撰 HSL v1.0 许可证，五不丢写成可判定条款
+- [x] 自撰 FSL v1.0 许可证，五不丢写成可判定条款
 - [x] 全套 `.md` 文档与联网调研（DSH / Apple 沙盒 / 2026 引擎格局）
 
 **验收命令**
@@ -58,7 +58,7 @@ cargo run -- demo
 | 最小 `ShellUi` 插件（地址栏 + 标签页 + 窗口） | 三平台可启动、可输入 URL、能看到页面 |
 | `ExtensionRuntime` 插件 + `chrome.*` / `browser.*` Promise 统一垫片 | 一个真实 Chrome MV3 扩展在三平台跑通 |
 | 五平台安装包 | Android APK、Windows、Linux、macOS 各出一个可安装产物；iOS 按系统规则处理引擎选择 |
-| HEP ABI 冻结声明 | 发布 `HEP v1` 兼容性文档与回归测试，承诺 Stage 1 内不破坏 |
+| FEP ABI 冻结声明 | 发布 `FEP v1` 兼容性文档与回归测试，承诺 Stage 1 内不破坏 |
 
 **门槛**：`net.connect` 未被授予时，引擎与网络插件**必须**无法出网——要有自动化测试，不能只靠代码阅读。
 

@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | 自由性 | 第 6.3 条 | `engine.rs` 全部 trait；`Registry::revoke`；`PluginKind` 含 `render-engine` / `network-stack` / `sandbox-policy` | `cargo test uninstall_is_reversible` |
 | 隐私性 | 第 6.1 条 | `Capability::is_privacy_sensitive`、`Grant::sanitized`、`SandboxPolicy::decide` | `cargo test telemetry_is_blocked_until_user_confirms` |
-| 快捷性 | 第 6.4 条 | HEP 逐行解析、内核不启动运行时/不联网/不等待 | `cargo run -- verify examples/engine.hep` 即时返回 |
+| 快捷性 | 第 6.4 条 | FEP 逐行解析、内核不启动运行时/不联网/不等待 | `cargo run -- verify examples/engine.fep` 即时返回 |
 | 快速性 | 第 6.4 / 6.5 条 | `Cargo.toml` 零依赖；CI 守门脚本拒绝新增依赖 | `cargo tree` 为空；CI `zero-dependency-guard` |
 | 流畅度 | 第 6.5 条 | 渲染路径全在 `RenderEngine` 插件侧，内核不介入帧循环 | Stage 1 起补真机帧时间基准（**目前尚未做**） |
 
@@ -58,6 +58,6 @@
 
 ## 为什么把原则写进许可证
 
-因为这些要求约束的不只是我们，还包括所有拿 Hollo 做派生版本的人。写在 README 里，改的人可以删掉；写在许可证第 6 条里，删掉就构成违约，第 5.1(e) 条明确要求派生版本保留它，第 7 条进一步规定违反者不得使用 Hollo 名称。
+因为这些要求约束的不只是我们，还包括所有拿 Fenestra 做派生版本的人。写在 README 里，改的人可以删掉；写在许可证第 6 条里，删掉就构成违约，第 5.1(e) 条明确要求派生版本保留它，第 7 条进一步规定违反者不得使用 Fenestra 名称。
 
 第 6.7 条给了判定口径：**按普通用户能否实际获得该能力判断，而不是按代码里是否存在某个开关判断**。这样"我留了个开关但藏在第十层设置里"不构成合规。

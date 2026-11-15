@@ -56,13 +56,13 @@ Safari 安全审计报告（2026）提了几点值得记下：
 - WebKit 沙箱仍出现过逃逸漏洞，多进程隔离不等于不可逃逸；
 - 闭源生态让外部审计困难。
 
-Hollo 的立场应该是：**抄它的 containment 思路，不抄它的封闭**。代码公开、清单可读、策略可 `weakened()` 检测，这恰恰是 Apple 模式给不了的东西。
+Fenestra 的立场应该是：**抄它的 containment 思路，不抄它的封闭**。代码公开、清单可读、策略可 `weakened()` 检测，这恰恰是 Apple 模式给不了的东西。
 
 ---
 
-## 4. 映射到 Hollo
+## 4. 映射到 Fenestra
 
-| Apple | Hollo 对应 | 状态 |
+| Apple | Fenestra 对应 | 状态 |
 | --- | --- | --- |
 | 把不可信数据放进低权限单元 detonate | `SandboxPolicy::detonate()` | ✅ Stage 0（策略层） |
 | 输出仍不可信 | `Untrusted<T>` + `revalidate()` | ✅ Stage 0（类型级约束） |
@@ -92,17 +92,17 @@ assert_eq!(parsed.revalidate(|n| *n < 4), None);
 
 ## 5. 明确做不到的部分（写下来，免得以后吹牛）
 
-1. **硬件级内存安全**：MIE / PAC 依赖 Apple 芯片与内核，Hollo 只能用 Rust 降低内存错误，不能声称等价。
+1. **硬件级内存安全**：MIE / PAC 依赖 Apple 芯片与内核，Fenestra 只能用 Rust 降低内存错误，不能声称等价。
 2. **代码签名与 AMFI**：插件签名在 Stage 2 做，但强度不等同于 OS 级强制签名。
 3. **真正的进程隔离**：Stage 0 的 `IsolationLevel` 只是**策略枚举**，不创建进程、不调用 seccomp/AppContainer/Seatbelt。谁把这两者混为一谈，谁就是在发假绿卡。
-4. **引擎内部沙盒**：Blink/WebKit/Gecko 自身的渲染器沙盒由引擎插件负责，Hollo 只约束它对外申请的能力。
+4. **引擎内部沙盒**：Blink/WebKit/Gecko 自身的渲染器沙盒由引擎插件负责，Fenestra 只约束它对外申请的能力。
 5. **隐私 ≠ 沙盒**：ITP 这类反跟踪是策略插件，不是隔离机制，Stage 2 再做。
 
 ---
 
 ## 6. 结论
 
-「对标苹果的安全」在 Hollo 里被翻译成三句可执行的话：
+「对标苹果的安全」在 Fenestra 里被翻译成三句可执行的话：
 
 > 不赌没有漏洞 → 假设解析单元会被打穿 → 因此**默认拒绝、最小权限、出站重校验**。
 

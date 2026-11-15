@@ -31,7 +31,7 @@ jobs:
       - name: CLI 自检
         run: cargo run --quiet -- demo
       - name: 清单校验
-        run: cargo run --quiet -- verify examples/engine.hep
+        run: cargo run --quiet -- verify examples/engine.fep
       - name: 三家扩展归一
         run: cargo run --quiet -- compat examples/extensions/firefox.json
 
@@ -69,7 +69,7 @@ jobs:
           test -f LICENSE
           grep -q "源码可见" LICENSE
           grep -q "source-available" LICENSE
-          grep -q "Hollo Source License" LICENSE
+          grep -q "Fenestra Source License" LICENSE
           python3 - <<'PY'
           import pathlib, re
           text = pathlib.Path("Cargo.toml").read_text()

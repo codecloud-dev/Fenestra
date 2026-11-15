@@ -2,7 +2,7 @@
 //!
 //! 插件"安装"不是把代码拷进来，而是往内核登记一组**可撤销的效应**：
 //! 服务、总线订阅、能力授权。卸载就是精确撤销这一组，不留悬空状态。
-//! 这个思路与 Cordis 的 reversible effects 一致，区别是 Hollo 把它
+//! 这个思路与 Cordis 的 reversible effects 一致，区别是 Fenestra 把它
 //! 建立在能力仲裁之上，而不是建立在信任插件自觉清理之上。
 
 use std::fmt;

@@ -1,5 +1,5 @@
 # 渲染引擎也是一个插件 —— 换引擎只需换这一行 entry
-id: org.hollo.engine.blink
+id: org.fenestra.engine.blink
 name: Blink Engine Adapter
 version: 0.1.0
 kind: render-engine

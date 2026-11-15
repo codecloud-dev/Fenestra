@@ -1,5 +1,5 @@
 # 地址栏、标签页、窗口全部由 UI 插件提供
-id: org.hollo.ui.minimal
+id: org.fenestra.ui.minimal
 name: Minimal Shell UI
 version: 0.1.0
 kind: shell-ui

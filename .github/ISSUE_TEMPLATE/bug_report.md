@@ -14,7 +14,7 @@ assignees: ''
 
 ```bash
 cargo test --all-targets
-cargo run -- verify <你的清单.hep>
+cargo run -- verify <你的清单.fep>
 # 或
 cargo run -- compat <你的 manifest.json>
 ```
@@ -29,7 +29,7 @@ cargo run -- compat <你的 manifest.json>
 
 - 操作系统：
 - `rustc --version`：
-- Hollo 版本 / commit：
+- Fenestra 版本 / commit：
 
 ## 是否涉及安全边界
 
@@ -38,4 +38,4 @@ cargo run -- compat <你的 manifest.json>
 
 ## 补充
 
-是否触及能力模型、HEP 清单格式、沙盒策略或三家扩展归一？
+是否触及能力模型、FEP 清单格式、沙盒策略或三家扩展归一？

@@ -80,7 +80,7 @@ pub struct Frame {
 }
 
 /// 渲染引擎接口。Blink / WebKit / Gecko / Servo / Ladybird / 自研引擎
-/// 只要实现它就能挂进 Hollo，彼此可以并列安装、按站点或按用户切换。
+/// 只要实现它就能挂进 Fenestra，彼此可以并列安装、按站点或按用户切换。
 pub trait RenderEngine {
     fn name(&self) -> &str;
     fn render(&self, req: &RenderRequest) -> Result<Frame, EngineError>;
@@ -110,7 +110,7 @@ pub enum ExtensionFlavor {
     Chrome,
     Edge,
     Firefox,
-    Hollo,
+    Fenestra,
 }
 
 impl ExtensionFlavor {
@@ -119,7 +119,7 @@ impl ExtensionFlavor {
             ExtensionFlavor::Chrome => "chrome",
             ExtensionFlavor::Edge => "edge",
             ExtensionFlavor::Firefox => "firefox",
-            ExtensionFlavor::Hollo => "hollo",
+            ExtensionFlavor::Fenestra => "fenestra",
         }
     }
 }

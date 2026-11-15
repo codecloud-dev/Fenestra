@@ -1,8 +1,8 @@
-//! # Hollo —— 只是个壳
+//! # Fenestra —— 只是个壳
 //!
 //! > The browser is a shell. Everything else is a plugin.
 //!
-//! Hollo 的内核只有三件事：
+//! Fenestra 的内核只有三件事：
 //! 1. 读清单（插件声明自己是谁、想要什么能力）；
 //! 2. 仲裁能力（默认拒绝，隐私红线需用户显式确认）；
 //! 3. 可逆登记（安装 = 登记一组可撤销效应，卸载 = 精确撤销）。
@@ -30,7 +30,7 @@ pub use registry::{Registration, Registry, RegistryError};
 pub use sandbox::{IsolationLevel, SandboxPolicy, Untrusted, Verdict};
 
 pub const KERNEL_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const HEP_VERSION: u8 = 1;
+pub const FEP_VERSION: u8 = 1;
 
 use std::fmt;
 
@@ -202,11 +202,11 @@ mod tests {
         let g = Grant::new().allow(Capability::NetConnect);
         shell.install(EXAMPLE_ENGINE, &g).unwrap();
         assert_eq!(
-            shell.request("org.hollo.engine.blink", Capability::NetConnect, false),
+            shell.request("org.fenestra.engine.blink", Capability::NetConnect, false),
             Verdict::Allow
         );
         assert_eq!(
-            shell.request("org.hollo.engine.blink", Capability::EngineSwap, false),
+            shell.request("org.fenestra.engine.blink", Capability::EngineSwap, false),
             Verdict::Deny
         );
         assert_eq!(
@@ -243,7 +243,7 @@ capability: telemetry
         let mut shell = Shell::new();
         let g = generous_grant();
         shell.install(EXAMPLE_ENGINE, &g).unwrap();
-        let id = "org.hollo.engine.blink";
+        let id = "org.fenestra.engine.blink";
         assert_eq!(
             shell.request(id, Capability::EngineSwap, false),
             Verdict::Allow

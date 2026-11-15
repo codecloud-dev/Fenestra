@@ -18,9 +18,9 @@
 2. **出站数据重新校验**：Apple 明确说"要假设 containment 进程可能已经被攻陷，它返回的东西不可信"。所以 Messages 在显示图片前，会用极小的校验器重新确认"这确实是我期望格式的图片"。
 3. **锁定模式削减攻击面**：Lockdown Mode 在 WebKit 上直接剥掉 JIT，避免 W^X 违规带来的 JIT 内存破坏面，代价是一点渲染开销。
 
-对应到 Hollo：
+对应到 Fenestra：
 
-| Apple | Hollo |
+| Apple | Fenestra |
 | --- | --- |
 | BlastDoor 隔离进程 | `IsolationLevel::BlastDoor` 策略 + 平台后端插件负责真实进程 |
 | 复杂数据在最低权限处 detonate | `SandboxPolicy::detonate()` |
@@ -29,7 +29,7 @@
 | Lockdown Mode 禁 JIT | `deny_jit_in_lockdown` + `harden()` |
 | App Sandbox 默认拒绝 | `default_deny` + `Capability` 三重闸门 |
 
-**没有被照搬的**：Apple 的做法依赖 Darwin 内核、代码签名、AMFI/CoreTrust 与硬件级内存完整性（MIE / PAC），这些不是浏览器壳能提供的。Hollo 能做的是把"默认拒绝 + 最小权限 + 出站重校验"做成跨平台的公共契约，把 OS 特定实现交给平台插件。
+**没有被照搬的**：Apple 的做法依赖 Darwin 内核、代码签名、AMFI/CoreTrust 与硬件级内存完整性（MIE / PAC），这些不是浏览器壳能提供的。Fenestra 能做的是把"默认拒绝 + 最小权限 + 出站重校验"做成跨平台的公共契约，把 OS 特定实现交给平台插件。
 
 ---
 

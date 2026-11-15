@@ -1,7 +1,7 @@
 //! 三类扩展的兼容层（只读归一，不执行扩展代码）。
 //!
 //! 目标：Chrome / Edge / Firefox 的 `manifest.json` 都能被读成同一份
-//! HEP 清单，挂进同一个能力仲裁器。差异不被悄悄抹平，而是变成
+//! FEP 清单，挂进同一个能力仲裁器。差异不被悄悄抹平，而是变成
 //! `warnings` 明确列出来——"完全兼容"不等于"假装没有差异"。
 //!
 //! 本文件自带一个极小的 JSON 解析器，只依赖 `std`。
@@ -301,7 +301,7 @@ fn utf8_len(first: u8) -> usize {
 }
 
 // ---------------------------------------------------------------------------
-// manifest.json → HEP
+// manifest.json → FEP
 // ---------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]
@@ -336,7 +336,7 @@ impl From<JsonError> for CompatError {
     }
 }
 
-/// 把一份浏览器扩展清单归一为 HEP 清单。
+/// 把一份浏览器扩展清单归一为 FEP 清单。
 pub fn from_json_manifest(text: &str) -> Result<CompatReport, CompatError> {
     let root = parse_json(text)?;
     let name = root
@@ -452,7 +452,7 @@ pub fn from_json_manifest(text: &str) -> Result<CompatReport, CompatError> {
                 warnings.push("阻塞式 webRequest 在 MV3 已由 declarativeNetRequest 静态规则取代；运行时拦截会被降级".to_string());
             }
         }
-        ExtensionFlavor::Hollo => {}
+        ExtensionFlavor::Fenestra => {}
     }
 
     if manifest_version < 3 {
@@ -460,7 +460,7 @@ pub fn from_json_manifest(text: &str) -> Result<CompatReport, CompatError> {
             "manifest_version={manifest_version} 属旧方言，建议迁移到 MV3"
         ));
     }
-    warnings.push("命名空间差异：Firefox 用 browser.*/Promise，Chromium 系自 2026 年中才全量支持 browser.*；Hollo 兼容层统一暴露 Promise 风格".to_string());
+    warnings.push("命名空间差异：Firefox 用 browser.*/Promise，Chromium 系自 2026 年中才全量支持 browser.*；Fenestra 兼容层统一暴露 Promise 风格".to_string());
     if matches!(flavor, ExtensionFlavor::Edge) {
         warnings.push("Edge 与 Chrome 共用同一 MV3 包，差异主要在商店审核与 update_url；归一后按同一能力集处理".to_string());
     }
@@ -546,7 +546,7 @@ fn normalize_version(v: &str) -> String {
     nums.join(".")
 }
 
-/// 把归一后的 HEP 清单写回纯文本，保证兼容层双向可审计：
+/// 把归一后的 FEP 清单写回纯文本，保证兼容层双向可审计：
 /// 任何从三家扩展转来的插件，都能被人直接读懂、手工修改。
 pub fn to_hep(m: &Manifest) -> String {
     let mut s = format!(

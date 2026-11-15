@@ -1,4 +1,4 @@
-# 调研：2026 浏览器引擎格局，以及为什么 Hollo 不做引擎
+# 调研：2026 浏览器引擎格局，以及为什么 Fenestra 不做引擎
 
 > 调研日期：2026-11-14 · 方式：联网检索引擎对比、WPT 通过率、扩展兼容性资料
 > 目的：为「渲染引擎全部能自己改」这句口号找到现实依据，同时防止路线图走偏成"再造一个 Chromium"。
@@ -29,15 +29,15 @@
 
 ## 2. 两个必须记住的现实
 
-**a) 从零造引擎极难，且不是 Hollo 的战场。**
+**a) 从零造引擎极难，且不是 Fenestra 的战场。**
 
 浏览器引擎是数千万行、二十年兼容性长尾、国家级攻击者关注的产物。过去二十年没有人从零造出面向大众的竞争性引擎并交付；Ladybird 用约 10 名全职工程师、2026 Alpha / 2028 稳定的节奏在试，尚且把沙盒、GPU 隔离、Wasm GC 明确列为 **roadmap 而非已交付**。行业共识是"forking is the rational choice"——过去十年几乎每一款"新浏览器"都是 Chromium 壳换 UI 与策略。
 
-> 这一条直接决定了 Hollo 的路线：**不自研引擎**。Stage 1 先把成熟引擎以插件形式接进来。
+> 这一条直接决定了 Fenestra 的路线：**不自研引擎**。Stage 1 先把成熟引擎以插件形式接进来。
 
 **b) 但"壳"这件事本身有价值，而且 iOS 上早就是常态。**
 
-欧盟之外，iOS 上所有浏览器（包括 Chrome、Firefox、Edge）都必须是 WebKit 壳。这说明"引擎由平台给定、产品层由自己做"是被大规模验证过的形态。Hollo 的差别在于：把这个事实**显式化、通用化、可替换化**——不是被平台逼着只能用一个引擎，而是把引擎做成清单里可以换掉的一行，桌面端能同时装 Blink / Gecko / WebKit 适配器并按站点或按用户切换。
+欧盟之外，iOS 上所有浏览器（包括 Chrome、Firefox、Edge）都必须是 WebKit 壳。这说明"引擎由平台给定、产品层由自己做"是被大规模验证过的形态。Fenestra 的差别在于：把这个事实**显式化、通用化、可替换化**——不是被平台逼着只能用一个引擎，而是把引擎做成清单里可以换掉的一行，桌面端能同时装 Blink / Gecko / WebKit 适配器并按站点或按用户切换。
 
 ---
 
@@ -49,7 +49,7 @@
 | Firefox / Gecko | 激进反跟踪按设计就会打破依赖跟踪器的站点；WebGPU / OffscreenCanvas 比 Blink 晚半年到一年；移动端份额小导致站点基本不测 |
 | Chromium | MV3 削弱了高级内容拦截与自动化扩展；Origin Trials 过期会静默失效；ChromeOS / Android WebView / Electron 之间有细微差异 |
 
-一个小团队的最小合理测试矩阵是：Chrome 桌面 + Safari iOS（P0），Chrome Android + Safari macOS（P1），Firefox 桌面（P2，跨引擎兼容的金丝雀），Edge 桌面（P3）。**Hollo 既然承诺三平台与可扩展，Stage 1 的验收就必须包含至少一个非 Chromium 引擎的适配验证**，否则"引擎可换"只是一句类型定义。
+一个小团队的最小合理测试矩阵是：Chrome 桌面 + Safari iOS（P0），Chrome Android + Safari macOS（P1），Firefox 桌面（P2，跨引擎兼容的金丝雀），Edge 桌面（P3）。**Fenestra 既然承诺三平台与可扩展，Stage 1 的验收就必须包含至少一个非 Chromium 引擎的适配验证**，否则"引擎可换"只是一句类型定义。
 
 ---
 
@@ -70,7 +70,7 @@
 - 一份 MV3 扩展发三家的实操记录 <https://dev.to/aialleyway/shipping-one-manifest-v3-extension-to-chrome-edge-and-firefox-from-a-single-source-cep>
 - Chrome vs Firefox vs Edge 差异 <https://metadesignsolutions.com/blog/cross-browser-extension-development-chrome-vs-firefox-vs-edge>
 
-Hollo 归一器把这些差异**逐条写成 `warnings`**，见 [EXTENSIONS.md](../../EXTENSIONS.md)。假装差异不存在，才是"完全兼容"里最危险的做法。
+Fenestra 归一器把这些差异**逐条写成 `warnings`**，见 [EXTENSIONS.md](../../EXTENSIONS.md)。假装差异不存在，才是"完全兼容"里最危险的做法。
 
 ---
 
@@ -81,12 +81,12 @@ Hollo 归一器把这些差异**逐条写成 `warnings`**，见 [EXTENSIONS.md](
 | **不自研引擎**，Stage 1 接成熟引擎适配层 | 引擎是数千万行 / 二十年长尾，Ladybird 的节奏就是现实参照 |
 | **引擎是插件，且可并列安装** | 桌面端没有 iOS 的 WebKit 强制约束，多引擎切换是壳能提供的增量价值 |
 | **`RenderEngine` 只定义 `render` 与 `name`** | 内核不该理解布局、DOM、编解码，否则就被某一个引擎的形状绑住 |
-| **兼容层在内核之上** | 第四家扩展格式出现时改插件，不动内核；内核只认 HEP |
+| **兼容层在内核之上** | 第四家扩展格式出现时改插件，不动内核；内核只认 FEP |
 
 ---
 
 ## 6. 一句诚实结论
 
-2026 年的引擎格局是 **Blink 约 81% + WebKit 约 14% + Gecko 约 3%**，新引擎还在 Alpha。Hollo 的机会不在"再做一个引擎"，而在"把引擎、网络栈、界面、扩展运行时全部降格为可替换插件，并且把这件事做得足够小、足够快、足够安全"。
+2026 年的引擎格局是 **Blink 约 81% + WebKit 约 14% + Gecko 约 3%**，新引擎还在 Alpha。Fenestra 的机会不在"再做一个引擎"，而在"把引擎、网络栈、界面、扩展运行时全部降格为可替换插件，并且把这件事做得足够小、足够快、足够安全"。
 
 壳要出名，靠的是**可替换性 + 好用**，不是靠重写 Blink。

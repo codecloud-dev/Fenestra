@@ -1,7 +1,7 @@
-//! HEP（Hollo Extension Package）清单解析。
+//! FEP（Fenestra Extension Package）清单解析。
 //!
 //! 我们不用 JSON 作为内核清单格式：内核要能在任何平台、任何语言运行时
-//! 启动之前就读得懂自己要加载什么。HEP 是纯文本、逐行、无歧义的格式，
+//! 启动之前就读得懂自己要加载什么。FEP 是纯文本、逐行、无歧义的格式，
 //! 解析器只依赖 `std`，约一百行，可被审计、可被移植、可被手写。
 //!
 //! ```text
@@ -25,9 +25,9 @@ use crate::engine::Target;
 /// 插件种类。
 ///
 /// 注意这里包含 `render-engine` / `network-stack` / `sandbox-policy`：
-/// 这正是 Hollo 比"一切皆插件"的 DSH 更绝的地方——
+/// 这正是 Fenestra 比"一切皆插件"的 DSH 更绝的地方——
 /// DSH 的插件化止于应用层能力，渲染引擎与运行时本身仍是给定的；
-/// Hollo 连引擎、网络栈、沙盒策略都是清单里可替换的一行。
+/// Fenestra 连引擎、网络栈、沙盒策略都是清单里可替换的一行。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PluginKind {
     RenderEngine,
@@ -129,7 +129,7 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    /// 从 HEP 文本解析清单。
+    /// 从 FEP 文本解析清单。
     pub fn parse(text: &str) -> Result<Manifest, ManifestError> {
         let mut id = None;
         let mut name = None;
@@ -294,7 +294,7 @@ impl std::error::Error for ManifestError {}
 
 pub const EXAMPLE_ENGINE: &str = "\
 # 渲染引擎也是一个插件
-id: org.hollo.engine.blink
+id: org.fenestra.engine.blink
 name: Blink Engine Adapter
 version: 0.1.0
 kind: render-engine
@@ -304,7 +304,7 @@ capability: net.connect
 ";
 
 pub const EXAMPLE_UI: &str = "\
-id: org.hollo.ui.minimal
+id: org.fenestra.ui.minimal
 name: Minimal Shell UI
 version: 0.1.0
 kind: shell-ui
@@ -314,7 +314,7 @@ capability: ui.content
 ";
 
 pub const EXAMPLE_EXT: &str = "\
-id: org.hollo.ext.webextensions
+id: org.fenestra.ext.webextensions
 name: WebExtensions Runtime
 version: 0.1.0
 kind: extension-runtime
@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn parses_full_manifest() {
         let m = Manifest::parse(EXAMPLE_ENGINE).unwrap();
-        assert_eq!(m.id, "org.hollo.engine.blink");
+        assert_eq!(m.id, "org.fenestra.engine.blink");
         assert_eq!(m.kind, PluginKind::RenderEngine);
         assert_eq!(m.capabilities.len(), 2);
         assert!(m.capabilities.contains(&Capability::EngineSwap));

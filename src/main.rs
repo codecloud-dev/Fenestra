@@ -1,4 +1,4 @@
-//! Hollo CLI —— 用来验证「壳」本身，不是浏览器成品。
+//! Fenestra CLI —— 用来验证「壳」本身，不是浏览器成品。
 //!
 //! 这个二进制里的 StubEngine 只是演示用的插件替身；
 //! 内核（library）里没有任何引擎实现。
@@ -7,12 +7,12 @@ use std::env;
 use std::fs;
 use std::process::ExitCode;
 
-use hollo::{
+use fenestra::{
     from_json_manifest, to_hep, Capability, EngineError, Frame, Grant, RenderEngine, RenderRequest,
     Shell, Target, KERNEL_VERSION,
 };
 
-use hollo::manifest::{EXAMPLE_ENGINE, EXAMPLE_EXT, EXAMPLE_UI};
+use fenestra::manifest::{EXAMPLE_ENGINE, EXAMPLE_EXT, EXAMPLE_UI};
 
 /// 演示用引擎插件：证明"引擎由插件提供"这件事在类型层面成立。
 struct StubEngine {
@@ -51,7 +51,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         "--version" | "-V" => {
-            println!("hollo {KERNEL_VERSION} (HEP v{})", hollo::HEP_VERSION);
+            println!("fenestra {KERNEL_VERSION} (FEP v{})", fenestra::FEP_VERSION);
             ExitCode::SUCCESS
         }
         "help" | "--help" | "-h" => {
@@ -140,7 +140,7 @@ fn cmd_compat(path: Option<&String>) -> ExitCode {
             for (i, w) in r.warnings.iter().enumerate() {
                 println!("    {}. {w}", i + 1);
             }
-            println!("\n--- 生成的 HEP 清单 ---");
+            println!("\n--- 生成的 FEP 清单 ---");
             print!("{}", to_hep(&r.manifest));
             ExitCode::SUCCESS
         }
@@ -154,7 +154,7 @@ fn cmd_compat(path: Option<&String>) -> ExitCode {
 fn cmd_policy() {
     let p = Shell::new();
     let s = p.policy();
-    println!("Hollo 默认沙盒策略");
+    println!("Fenestra 默认沙盒策略");
     println!("  隔离级别        : {}", s.level.as_str());
     println!("  默认拒绝        : {}", s.default_deny);
     println!("  锁定模式禁 JIT  : {}", s.deny_jit_in_lockdown);
@@ -164,14 +164,14 @@ fn cmd_policy() {
 }
 
 fn cmd_targets() {
-    println!("Hollo 内核支持的目标平台（内核零依赖，平台差异由插件承担）:");
+    println!("Fenestra 内核支持的目标平台（内核零依赖，平台差异由插件承担）:");
     for t in Target::SUPPORTED {
         println!("  {:<8} → {}", t.as_str(), t.rust_target_triple());
     }
 }
 
 fn cmd_demo() {
-    println!("Hollo {} — 只是个壳，其余皆插件\n", KERNEL_VERSION);
+    println!("Fenestra {} — 只是个壳，其余皆插件\n", KERNEL_VERSION);
 
     let mut shell = Shell::new();
     let grant = Grant::new()
@@ -220,7 +220,7 @@ fn cmd_demo() {
     println!("    {:?}", frame);
 
     println!("\n[4] 能力仲裁：默认拒绝");
-    let ext = "org.hollo.ext.webextensions";
+    let ext = "org.fenestra.ext.webextensions";
     println!(
         "    storage.read → {:?}",
         shell.request(ext, Capability::StorageRead, false)
@@ -235,7 +235,7 @@ fn cmd_demo() {
     );
 
     println!("\n[5] 锁定模式：冻结可改变隔离边界的能力");
-    let engine_id = "org.hollo.engine.blink";
+    let engine_id = "org.fenestra.engine.blink";
     println!(
         "    加固前 engine.swap → {:?}",
         shell.request(engine_id, Capability::EngineSwap, false)
@@ -250,11 +250,11 @@ fn cmd_demo() {
         shell.request(engine_id, Capability::NetConnect, false)
     );
 
-    println!("\n[6] 三类扩展 manifest.json 归一为同一份 HEP 清单");
+    println!("\n[6] 三类扩展 manifest.json 归一为同一份 FEP 清单");
     for (flavor, text) in [
-        ("Chrome", hollo::compat::CHROME_MV3),
-        ("Edge", hollo::compat::EDGE_MV3),
-        ("Firefox", hollo::compat::FIREFOX_MV3),
+        ("Chrome", fenestra::compat::CHROME_MV3),
+        ("Edge", fenestra::compat::EDGE_MV3),
+        ("Firefox", fenestra::compat::FIREFOX_MV3),
     ] {
         let r = from_json_manifest(text).expect("内置样例应可归一");
         println!(
@@ -279,12 +279,12 @@ fn cmd_demo() {
 }
 
 fn print_help() {
-    println!("Hollo {KERNEL_VERSION} — 只是个壳，其余皆插件\n");
+    println!("Fenestra {KERNEL_VERSION} — 只是个壳，其余皆插件\n");
     println!("用法:");
-    println!("  hollo verify <file.hep>        校验 HEP 清单");
-    println!("  hollo compat <manifest.json>   把 Chrome/Edge/Firefox 扩展归一为 HEP");
-    println!("  hollo demo                      跑一遍内核自检演示");
-    println!("  hollo policy                    打印默认沙盒策略");
-    println!("  hollo targets                   打印支持的平台与 target triple");
-    println!("  hollo --version                 打印版本");
+    println!("  fenestra verify <file.fep>        校验 FEP 清单");
+    println!("  fenestra compat <manifest.json>   把 Chrome/Edge/Firefox 扩展归一为 FEP");
+    println!("  fenestra demo                      跑一遍内核自检演示");
+    println!("  fenestra policy                    打印默认沙盒策略");
+    println!("  fenestra targets                   打印支持的平台与 target triple");
+    println!("  fenestra --version                 打印版本");
 }

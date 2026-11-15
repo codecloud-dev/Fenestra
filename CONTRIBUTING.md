@@ -4,7 +4,7 @@
 
 ## 1. 许可证边界（务必先读）
 
-本项目使用自撰的 [Hollo Source License v1.0](LICENSE)，**不是 OSI 开源许可证**：
+本项目使用自撰的 [Fenestra Source License v1.0](LICENSE)，**不是 OSI 开源许可证**：
 
 - 你可以免费阅读、修改、自建自用，用于非商业目的；
 - 你提交的贡献视为同意按本协议公开，并授予版权人可用于商业版本的非独占使用权；**版权不转让，不需要签 CLA，署名保留**（LICENSE 第 8 条）；
@@ -18,7 +18,7 @@
 
 - **零第三方依赖**：`Cargo.toml` 的 `[dependencies]` 必须保持为空，CI 有守门脚本。确实需要引入依赖，先开 issue 讨论并同步修改 ROADMAP 的贯穿约束。
 - **内核只做三件事**：读清单、仲裁能力、可逆登记。任何"用户能感知的浏览器功能"都应放进插件，不要往 `src/lib.rs` 里塞。
-- **能力枚举封闭**：新增 `Capability` 要同步更新 `ALL`、`as_str`、解析、测试、文档与 HEP 版本说明。
+- **能力枚举封闭**：新增 `Capability` 要同步更新 `ALL`、`as_str`、解析、测试、文档与 FEP 版本说明。
 - **未知即拒绝**：清单里出现未知字段／未知能力／无法映射的权限，一律报错或拒绝授予，不允许"先放过再说"。
 - **不弱化安全**：`default_deny`、`revalidate_untrusted_output`、隔离级别的改动必须有对应测试与说明。
 
@@ -43,7 +43,7 @@ cargo run -- compat examples/extensions/firefox.json
 
 Stage 0 只收清单样例与归一器的改进，不收可执行的插件包（还没有运行时、签名与商店）。
 
-- HEP 清单一律放 `examples/`，并保证 `cargo run -- verify <file>` 通过；
+- FEP 清单一律放 `examples/`，并保证 `cargo run -- verify <file>` 通过；
 - 三家扩展的 `manifest.json` 样例放 `examples/extensions/`，并保证 `cargo run -- compat <file>` 通过；
 - 发现新的跨浏览器差异，请在 `src/compat.rs` 的 `warnings` 里补一条，并加测试。
 

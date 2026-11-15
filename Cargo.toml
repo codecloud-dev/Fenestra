@@ -1,11 +1,11 @@
 [package]
-name = "hollo"
+name = "fenestra"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
-description = "Hollo — a browser that is only a shell; everything else is a plugin"
-repository = "https://github.com/codecloud-dev/hollo"
-homepage = "https://github.com/codecloud-dev/hollo"
+description = "Fenestra — a browser that is only a shell; everything else is a plugin"
+repository = "https://github.com/codecloud-dev/Fenestra"
+homepage = "https://github.com/codecloud-dev/Fenestra"
 readme = "README.md"
 license-file = "LICENSE"
 keywords = ["browser", "plugin", "shell", "sandbox", "extensions"]
@@ -17,9 +17,9 @@ categories = ["command-line-utilities"]
 [dependencies]
 
 [lib]
-name = "hollo"
+name = "fenestra"
 path = "src/lib.rs"
 
 [[bin]]
-name = "hollo"
+name = "fenestra"
 path = "src/main.rs"

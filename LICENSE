@@ -1,5 +1,5 @@
-# HOLLO 源码许可协议
-## Hollo Source License (HSL) · 版本 1.0
+# FENESTRA 源码许可协议
+## Fenestra Source License (FSL) · 版本 1.0
 
 **生效日期：2026-11-15**
 **版权人：codecloud-dev（GitHub 账号）及其书面指定的权利承继者**
@@ -8,11 +8,11 @@
 
 ## 序
 
-这份协议是版权人专为 Hollo 写的，不是从任何现成许可证复制、改编或拼接而来。
+这份协议是版权人专为 Fenestra 写的，不是从任何现成许可证复制、改编或拼接而来。
 
 它要解决的问题很具体：让代码公开可读、可审计、可修改、可自建自用；同时让「拿去卖」这件事必须经过版权人同意并支付一笔不大的费用；并且无论谁改，都不能把这个壳变成笼子。
 
-Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳。如果有一天有人靠它赚钱却不给作者一分钱，或者靠锁死插件、偷偷上传数据、塞广告来赚钱，那这个项目的意义就没了。所以商业条款和不可退化条款写在同一份协议里，它们是一件事的两面。
+Fenestra 想做的是一个特别小、特别快、特别自由的浏览器空壳。如果有一天有人靠它赚钱却不给作者一分钱，或者靠锁死插件、偷偷上传数据、塞广告来赚钱，那这个项目的意义就没了。所以商业条款和不可退化条款写在同一份协议里，它们是一件事的两面。
 
 ---
 
@@ -20,7 +20,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 本协议**不满足** Open Source Initiative 的开源定义（OSD），因为它对使用领域（商业使用）作了区分。
 
-因此 Hollo 是**源码可见（source-available）**软件，**不是开源软件**。任何人不得在宣传、文档、商店描述中称 Hollo 为「开源」「OSI 认证」「完全自由软件」，也不得把本协议描述为任何既有开源许可证的变体。
+因此 Fenestra 是**源码可见（source-available）**软件，**不是开源软件**。任何人不得在宣传、文档、商店描述中称 Fenestra 为「开源」「OSI 认证」「完全自由软件」，也不得把本协议描述为任何既有开源许可证的变体。
 
 这一条不是对使用者的限制，而是为了防止误解：你可以看、可以改、可以自己用，但请别把它叫成它不是的东西。
 
@@ -28,7 +28,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 ## 第 1 条　定义
 
-**1.1 本软件**：指 Hollo 仓库中包含的源代码、清单格式、文档、示例、构建脚本，以及它们的任何部分。
+**1.1 本软件**：指 Fenestra 仓库中包含的源代码、清单格式、文档、示例、构建脚本，以及它们的任何部分。
 
 **1.2 你**：指行使本协议所授予权利的个人或法律实体。
 
@@ -40,7 +40,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 - (b) 在营利组织内将其用于生产经营、内部业务流程，或用于对外交付物；
 - (c) 预装、分发、转售、贴牌，或与硬件、服务捆绑以获取对价；
 - (d) 在本软件或派生版本中植入广告、流量变现、付费引导或数据交易；
-- (e) 以本软件为核心提供与 Hollo 相竞争的商业产品。
+- (e) 以本软件为核心提供与 Fenestra 相竞争的商业产品。
 
 以下情形**不属于**商业使用：不以营利为目的的个人学习、研究、教学、公益、非营利组织内部使用、安全审计、兼容性评测，以及个人自建自用。
 
@@ -113,7 +113,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 **6.1 隐私不丢**：不得默认收集或上传浏览历史、页面内容、剪贴板、位置、凭据、设备指纹；不得植入未经用户明示同意且可随时关闭的遥测；不得在用户未逐项确认的情况下启用隐私红线能力（`telemetry`、`profile.read`、`clipboard.read`、`device.camera`、`device.location`）。
 
-**6.2 安全不丢**：不得关闭或弱化默认拒绝的能力仲裁、进程／站点隔离、隔离单元出站数据重校验、锁定模式下的 JIT 限制；不得默认降低沙盒隔离级别。确需降低的，必须在首次启动界面显著告知用户，且**不得使用 Hollo 名称或标识**。
+**6.2 安全不丢**：不得关闭或弱化默认拒绝的能力仲裁、进程／站点隔离、隔离单元出站数据重校验、锁定模式下的 JIT 限制；不得默认降低沙盒隔离级别。确需降低的，必须在首次启动界面显著告知用户，且**不得使用 Fenestra 名称或标识**。
 
 **6.3 自由不丢**：不得移除用户卸载任意插件、更换渲染引擎／网络栈／界面／扩展运行时、导出全部本地数据、关闭任何内置服务、完全离线运行的能力。不得加入「只能从单一商店安装插件」的限制。
 
@@ -129,7 +129,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 ## 第 7 条　名称与标识
 
-「Hollo」、空壳标识及其组合为版权人标识。
+「Fenestra」、空壳标识及其组合为版权人标识。
 
 - 原样、非商业、未修改第 6 条行为的再分发，可保留名称并注明来源；
 - 修改了第 6 条任一行为、或以商业方式提供的派生版本，不得在名称、图标、商店标题、域名中暗示其为官方版本或获得背书，应改用自有名称。
@@ -178,7 +178,7 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 **12.1** 本协议以版本号标识。你获取的某个版本，永久适用该版本当时所对应的协议文本；版权人发布新版本**不追溯**收回已授予的权利。
 
-**12.2 开放转换**：若 Hollo 未来满足下列任一条件，版权人可发布《开放转换声明》，将指定版本转为无商业限制的公开许可：
+**12.2 开放转换**：若 Fenestra 未来满足下列任一条件，版权人可发布《开放转换声明》，将指定版本转为无商业限制的公开许可：
 
 - (a) 项目交由独立非营利基金会治理；
 - (b) 商业授权收入已持续覆盖开发与第三方安全审计成本；
@@ -220,8 +220,8 @@ Hollo 想做的是一个特别小、特别快、特别自由的浏览器空壳�
 
 ## English summary (for convenience only; the Chinese text controls)
 
-This is a **source-available, non-OSI** license written specifically for Hollo. Non-commercial use — studying, modifying, self-hosting, education, nonprofits, security research — is free and perpetual. **Any commercial use requires a small, transparent, non-discriminatory paid license from the copyright holder.** Every modified version that is distributed or offered to third parties (including as a service) **must publish its complete corresponding source under these same terms**. Paying for a commercial license does **not** buy the right to close the source or to weaken privacy, security, plugin freedom, speed, or cross-browser extension compatibility. The Chinese text above governs.
+This is a **source-available, non-OSI** license written specifically for Fenestra. Non-commercial use — studying, modifying, self-hosting, education, nonprofits, security research — is free and perpetual. **Any commercial use requires a small, transparent, non-discriminatory paid license from the copyright holder.** Every modified version that is distributed or offered to third parties (including as a service) **must publish its complete corresponding source under these same terms**. Paying for a commercial license does **not** buy the right to close the source or to weaken privacy, security, plugin freedom, speed, or cross-browser extension compatibility. The Chinese text above governs.
 
 ---
 
-*版权人 codecloud-dev · 2026-11-15 · Hollo Source License v1.0*
+*版权人 codecloud-dev · 2026-11-15 · Fenestra Source License v1.0*

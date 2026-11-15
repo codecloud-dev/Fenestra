@@ -4,7 +4,7 @@
 
 > Chrome / Edge / Firefox 三类扩展完全兼容；我们有自己的扩展，比这些兼容的更好用。
 
-这里「完全兼容」的准确含义是：**三家现有的 `manifest.json` 都能被读成同一份 HEP 清单，进入同一套能力仲裁，挂到同一个插件体系里**；已知方言差异由归一器**显式列出**，而不是被悄悄抹平后装作不存在。
+这里「完全兼容」的准确含义是：**三家现有的 `manifest.json` 都能被读成同一份 FEP 清单，进入同一套能力仲裁，挂到同一个插件体系里**；已知方言差异由归一器**显式列出**，而不是被悄悄抹平后装作不存在。
 
 "自家扩展更好"的准确含义见第 4 节：能力是声明式的，安装时就算好最小权限交集，不需要猜权限字符串的含义，也不需要运行时再去问一遍。
 
@@ -57,7 +57,7 @@ update_url 含 edge.microsoft.com                      → Edge
 
 最后一条很关键：遇到不认识的权限，归一器**默认拒绝**并报告，而不是"先给了再说"。
 
-`to_hep()` 可以把归一结果写回纯文本 HEP，人能直接读懂、手工改。测试 `all_three_flavors_produce_installable_hep_manifests` 验证三家样例都能走完 `manifest.json → HEP → Manifest::parse → Shell::install` 全链路。
+`to_hep()` 可以把归一结果写回纯文本 FEP，人能直接读懂、手工改。测试 `all_three_flavors_produce_installable_hep_manifests` 验证三家样例都能走完 `manifest.json → FEP → Manifest::parse → Shell::install` 全链路。
 
 ```bash
 cargo run -- compat examples/extensions/firefox.json
@@ -65,9 +65,9 @@ cargo run -- compat examples/extensions/firefox.json
 
 ---
 
-## 4. HEP 自有扩展为什么更好
+## 4. FEP 自有扩展为什么更好
 
-| 痛点（三家兼容层） | HEP 自有扩展 |
+| 痛点（三家兼容层） | FEP 自有扩展 |
 | --- | --- |
 | 权限是字符串，含义靠文档约定，还会随版本变 | 能力是内核封闭枚举，未知即拒绝 |
 | 安装时不算权限，运行时才拦截 | `Grant::intersect` 在安装时求最小权限交集 |
@@ -76,7 +76,7 @@ cargo run -- compat examples/extensions/firefox.json
 | 扩展只能改页面／UI | 渲染引擎、网络栈、UI、协议处理都是同一套插件体系 |
 | 清单差异要靠构建期多份 manifest | 一份纯文本清单，跨平台、可审计 |
 
-一句话：兼容层负责"把老世界接进来"，HEP 负责"让新东西不必背老世界的包袱"。
+一句话：兼容层负责"把老世界接进来"，FEP 负责"让新东西不必背老世界的包袱"。
 
 ---
 
@@ -86,13 +86,13 @@ cargo run -- compat examples/extensions/firefox.json
 
 - [ ] **执行扩展代码**：归一器只读清单、只算能力，不加载 wasm、不启动 JS 运行时。真正的执行在 `ExtensionRuntime` 插件里（Stage 1）。
 - [ ] **API shim**：`chrome.*` / `browser.*` 的运行时垫片尚未实现，需要 Promise 统一层。
-- [ ] **DNR 规则转换**：`declarativeNetRequest` 规则集到 Hollo 能力模型的转换尚未实现。
+- [ ] **DNR 规则转换**：`declarativeNetRequest` 规则集到 Fenestra 能力模型的转换尚未实现。
 - [ ] **商店与签名**：没有插件商店、没有签名验证、没有来源审计（Stage 2）。
 - [ ] **移动端 API 差异**：Firefox Android 不支持 omnibox 这类差异目前只在 warnings 里提示，没有运行时降级。
 
 ---
 
-## 6. 写一个 HEP 扩展
+## 6. 写一个 FEP 扩展
 
 最小可用清单：
 
@@ -109,7 +109,7 @@ origin: https://example.com/*
 ```
 
 ```bash
-cargo run -- verify examples/annotate.hep
+cargo run -- verify examples/annotate.fep
 ```
 
 规则见 [ARCHITECTURE.md 第 3 节](ARCHITECTURE.md#3-hep-清单格式)。注意：声明了能力不代表拿到能力，用户授权与运行时仲裁各过一次。

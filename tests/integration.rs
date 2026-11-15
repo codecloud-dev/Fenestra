@@ -1,12 +1,12 @@
 //! 端到端验收：从三家扩展的 manifest.json 一路走到能力仲裁与可逆卸载。
 
-use hollo::{from_json_manifest, to_hep, Capability, ExtensionFlavor, Grant, Shell, Verdict};
+use fenestra::{from_json_manifest, to_hep, Capability, ExtensionFlavor, Grant, Shell, Verdict};
 
-const CHROME: &str = hollo::compat::CHROME_MV3;
-const EDGE: &str = hollo::compat::EDGE_MV3;
-const FIREFOX: &str = hollo::compat::FIREFOX_MV3;
+const CHROME: &str = fenestra::compat::CHROME_MV3;
+const EDGE: &str = fenestra::compat::EDGE_MV3;
+const FIREFOX: &str = fenestra::compat::FIREFOX_MV3;
 
-fn grant_for(report: &hollo::CompatReport) -> Grant {
+fn grant_for(report: &fenestra::CompatReport) -> Grant {
     let mut g = Grant::new();
     for cap in &report.manifest.capabilities {
         g = g.allow(*cap);
@@ -25,7 +25,7 @@ fn three_extension_flavors_install_into_one_shell() {
         let grant = grant_for(&report);
         shell
             .install(&hep, &grant)
-            .expect("归一后的 HEP 清单应可直接安装");
+            .expect("归一后的 FEP 清单应可直接安装");
     }
     assert_eq!(
         flavors,
@@ -46,7 +46,7 @@ fn firefox_gecko_id_survives_roundtrip() {
     let hep = to_hep(&report.manifest);
     let parsed = Shell::verify(&hep).unwrap();
     assert_eq!(parsed.id, "reader@example.org");
-    assert_eq!(parsed.kind, hollo::PluginKind::ExtensionRuntime);
+    assert_eq!(parsed.kind, fenestra::PluginKind::ExtensionRuntime);
 }
 
 #[test]
