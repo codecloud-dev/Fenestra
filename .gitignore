@@ -17,7 +17,8 @@ target/
 **/*.rs.bk
 
 # ---- Tauri ----
-apps/shell/src-tauri/gen/
+# gen/android 是 `pnpm tauri android init` 生成的完整 Android 工程，入库以便 CI 直接真编 APK；
+# 仅忽略编译产物与运行时重新生成的文件（见 gen/android/.gitignore）。
 apps/shell/src-tauri/target/
 
 # ---- OS / editor ----

@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"默认能力：仅主窗口与 WebView 基础权限；核心能力一律经 Rust 闸门按默认拒绝裁决","local":true,"windows":["main"],"permissions":["core:default"]}}

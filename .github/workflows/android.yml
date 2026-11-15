@@ -1,0 +1,108 @@
+name: Android APK
+
+# 在 GitHub Actions 的 ubuntu runner 上「真装 SDK、真编译」出可安装的 APK。
+# 本地沙箱曾缺 ANDROID_HOME / SDK / NDK，故把可复现的构建步骤固化在这里。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/shell/**'
+      - 'packages/ui/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: 真编 Android APK（arm64）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      # Rust 工具链 + 四个 Android 编译目标（runner 上 stable 版本与其 manifest 一致，
+      # 不会像本地沙箱那样出现 rustc 与 channel manifest 对不上的问题）。
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # 装 Android cmdline-tools，并把 sdkmanager / ANDROID_HOME 注入后续步骤。
+      - uses: android-actions/setup-android@v3
+
+      - name: 安装 Android SDK / Build-Tools / NDK r27c
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-37.0" \
+            "platforms;android-36" \
+            "build-tools;37.0.0" \
+            "ndk;27.0.12077973"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      # tauri.conf.json 的 frontendDist 指向 ../../../packages/ui/dist，必须先构建真实 UI。
+      - name: 构建真实 UI 产物
+        run: pnpm --filter @fenestra/ui build
+
+      - name: 核对配置与已入库的 Android 工程
+        run: |
+          grep -q '"identifier": "dev.codecloud.fenestra"' apps/shell/src-tauri/tauri.conf.json
+          grep -q '"frontendDist": "../../../packages/ui/dist"' apps/shell/src-tauri/tauri.conf.json
+          test -f packages/ui/dist/index.html
+          test -f apps/shell/src-tauri/gen/android/gradlew
+          test -f apps/shell/src-tauri/gen/android/app/src/main/AndroidManifest.xml
+
+      # gen/android 已入库；CLI 会在构建时重新生成 tauri.settings.gradle /
+      # tauri.build.gradle.kts / tauri.properties（含 runner 本地路径），无需手动改。
+      - name: 真编译 APK（debug，arm64-v8a）
+        working-directory: apps/shell
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        run: pnpm exec tauri android build --apk --debug --target aarch64 --ci
+
+      - name: 收集 APK 并计算 sha256
+        run: |
+          APK=$(find apps/shell/src-tauri/gen/android -name '*.apk' -type f | head -1)
+          if [ -z "$APK" ]; then
+            echo "::error::没有产出任何 APK"
+            exit 1
+          fi
+          echo "原始产物：$APK"
+          cp "$APK" fenestra.apk
+          sha256sum fenestra.apk | tee fenestra.apk.sha256
+          echo "size=$(stat -c %s fenestra.apk) bytes"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fenestra-android-apk
+          path: |
+            fenestra.apk
+            fenestra.apk.sha256
+          if-no-files-found: error

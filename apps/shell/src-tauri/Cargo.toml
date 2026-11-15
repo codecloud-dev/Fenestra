@@ -14,6 +14,9 @@ repository = "https://github.com/codecloud-dev/Fenestra"
 [lib]
 name = "fenestra_shell_lib"
 path = "src/lib.rs"
+# Tauri 2 移动端要求 lib 同时产出 cdylib（JNI 加载的 .so）、staticlib 与 rlib。
+# rlib 供桌面 bin 链接；cdylib 供 Android 打包进 APK。
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]
 name = "fenestra-shell"

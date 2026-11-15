@@ -92,6 +92,10 @@ fn engine_name() -> String {
 }
 
 /// 启动 Tauri 外壳。
+/// `mobile` cfg 由 tauri-build 在 Android / iOS 构建时注入；
+/// `mobile_entry_point` 生成 JNI 入口 `start_app` 符号（Tauri CLI 会检查），
+/// 桌面构建下该属性为空操作，`main.rs` 仍可直接调用本函数。
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![gate_check, engine_name])

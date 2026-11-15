@@ -4,20 +4,22 @@
   "version": "0.1.0",
   "identifier": "dev.codecloud.fenestra",
   "build": {
-    "frontendDist": "../frontend"
+    "beforeBuildCommand": "pnpm --filter @fenestra/ui build",
+    "frontendDist": "../../../packages/ui/dist"
   },
   "app": {
     "windows": [
       {
         "label": "main",
         "title": "Fenestra · 只是个壳",
-        "width": 1100,
-        "height": 760,
+        "width": 420,
+        "height": 860,
         "resizable": true
       }
     ]
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "icon": ["icons/icon.png"]
   }
 }
