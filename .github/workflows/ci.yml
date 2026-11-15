@@ -72,6 +72,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # generate_context!() 在编译期就会读 frontendDist，UI 产物必须真实存在。
+      # job 之间不共享文件系统，不能指望上面的 ui job 帮忙构建。
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 构建 UI 产物（frontendDist 指向 packages/ui/dist）
+        run: pnpm --filter @fenestra/ui build
       - uses: dtolnay/rust-toolchain@stable
       - name: 安装 webkit2gtk-4.1 等系统依赖
         run: |

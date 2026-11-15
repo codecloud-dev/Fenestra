@@ -50,22 +50,31 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 装 Android cmdline-tools，并把 sdkmanager / ANDROID_HOME 注入后续步骤。
-      - uses: android-actions/setup-android@v3
+      # 直接用 ubuntu runner 预装的 Android SDK：setup-android@v3 会去请求早已废弃的
+      # "tools" 包，在 2026 的 runner 上直接 sdkmanager 退出 1（真机实测失败点）。
+      # runner 镜像自带 /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager。
+      - name: 注入预装 Android SDK 环境
+        run: |
+          SDK=/usr/local/lib/android/sdk
+          test -x "$SDK/cmdline-tools/latest/bin/sdkmanager" || test -x "$SDK/cmdline-tools/16.0/bin/sdkmanager" || { echo "::error::runner 无 cmdline-tools"; exit 1; }
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          echo "$SDK/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$SDK/cmdline-tools/16.0/bin" >> "$GITHUB_PATH"
+          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
 
       - name: 安装 Android SDK / Build-Tools / NDK r27c
         run: |
           yes | sdkmanager --licenses > /dev/null || true
           sdkmanager --install \
             "platform-tools" \
-            "platforms;android-37.0" \
-            "platforms;android-36" \
-            "build-tools;37.0.0" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
             "ndk;27.0.12077973"
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
-          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          SDK=/usr/local/lib/android/sdk
+          echo "NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$SDK/ndk/27.0.12077973" >> "$GITHUB_ENV"
 
       # tauri.conf.json 的 frontendDist 指向 ../../../packages/ui/dist，必须先构建真实 UI。
       - name: 构建真实 UI 产物
