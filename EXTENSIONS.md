@@ -1,115 +1,69 @@
-# 扩展：三家完全兼容，自有更好
+# FEP 规范 / Fenestra Extension Protocol
 
-## 1. 目标
+> 层 A 覆盖 FEP 规范文本（见 [LICENSE](./LICENSE)）。本文描述 **Stage 1 自有插件**的最小协议；Chrome / Edge / Firefox 三家兼容是 Stage 2 硬验收项，见 [ROADMAP.md](./ROADMAP.md)。
 
-> Chrome / Edge / Firefox 三类扩展完全兼容；我们有自己的扩展，比这些兼容的更好用。
+## 1. 定位
 
-这里「完全兼容」的准确含义是：**三家现有的 `manifest.json` 都能被读成同一份 FEP 清单，进入同一套能力仲裁，挂到同一个插件体系里**；已知方言差异由归一器**显式列出**，而不是被悄悄抹平后装作不存在。
+自有扩展是**一等公民**：能力最全、性能最好。三家扩展未来通过兼容层映射，允许性能差异，功能覆盖逐条列进文档。MVP 六件事不含兼容层，但插件内核 API 从第一天按「自有 + 三家可映射」设计，不把路堵死。
 
-"自家扩展更好"的准确含义见第 4 节：能力是声明式的，安装时就算好最小权限交集，不需要猜权限字符串的含义，也不需要运行时再去问一遍。
+## 2. 插件定义（TypeScript）
 
----
+插件是一个 `PluginDefinition`（见 [packages/core/src/index.ts](./packages/core/src/index.ts)）：
 
-## 2. 三家差异（2026 年联网核查，不藏）
+```ts
+import type { PluginDefinition } from '@fenestra/core'
 
-| 维度 | Chrome | Edge | Firefox |
-| --- | --- | --- | --- |
-| Manifest | MV3 only | MV3 only（Chromium） | MV3，且仍兼容部分 MV2 |
-| 后台 | `background.service_worker`，约 30s 空闲即回收 | 同 Chrome | 更稳妥的是 `background.scripts` 事件页，可选持久后台 |
-| 网络拦截 | `declarativeNetRequest` 静态规则，约 300K 条 | 同 Chrome | 仍支持部分 `webRequest` 动态拦截，DNR 约 150K 条 |
-| 命名空间 | `chrome.*`，2026 年中起全量支持 `browser.*` + Promise | 同 Chrome | `browser.*` + Promise 原生，另有 `chrome.*` 回调别名 |
-| 商店要求 | 签名、审核 1–3 天 | 同包可上传，另有 `update_url` 与独立审核 | 需 `browser_specific_settings.gecko.id`；`data_collection_permissions`（桌面 ≥140 / Android ≥142）；`web-ext lint` |
-| 移动端 | Chrome Android | — | Firefox Android 不支持 omnibox 等 API |
-
-资料出处与原文摘录见 [`docs/research/browser-engines-2026.md`](docs/research/browser-engines-2026.md) 与 MDN / extensionworkshop / Thoughtworks 的公开资料。
-
-**这些差异不可能靠"写一次到处跑"消失**。所以归一器的输出里带 `warnings: Vec<String>`，把降级、缺字段、命名空间差异全部说清楚。开发者看到的是事实，不是惊喜。
-
----
-
-## 3. 归一器怎么工作
-
-[`src/compat.rs`](src/compat.rs) 做了两件事，都是自研、零依赖：
-
-**3.1 迷你 JSON 解析器**：支持 object / array / string（含 `\uXXXX` 与 UTF-8）/ number / bool / null，错误带位置。为什么不用现成库？因为内核要在任何 JS 运行时启动之前读清单，而且 `[dependencies]` 必须为空（CI 有守门）。
-
-**3.2 方言识别与权限映射**：
-
-```
-browser_specific_settings.gecko / applications.gecko  → Firefox
-update_url 含 edge.microsoft.com                      → Edge
-其它                                                  → Chrome
+export const myPlugin: PluginDefinition = {
+  meta: {
+    name: 'example.my-plugin',
+    version: '0.1.0',
+    description: '……',
+    permissions: ['ui.newtab'], // 只声明，不自动授予
+  },
+  apply(ctx, api) {
+    api.effect('label', () => { /* setup */ }, () => { /* cleanup，逆序执行 */ })
+  },
+}
 ```
 
-权限映射表（节选）：
+- `meta.permissions`：**声明 ≠ 授权**。是否放行由 [crates/gate](./crates/gate/) 按默认拒绝 + 最小权限交集裁决。
+- `apply(ctx, api)`：`ctx` 是 Cordis `Context`，`api` 是 `FenestraApi`。
 
-| 权限字符串 | 映射到的能力 |
-| --- | --- |
-| `storage` / `unlimitedStorage` / `bookmarks` | `storage.read` + `storage.write` |
-| `tabs` / `activeTab` / `scripting` | `ui.content` |
-| `clipboardRead` / `clipboardWrite` | `clipboard.read` / `clipboard.write` |
-| `webRequest` / `webRequestBlocking` / `declarativeNetRequest*` | `net.intercept`（安全红线） |
-| `history` / `cookies` | `profile.read`（隐私红线） |
-| `geolocation` | `device.location`（隐私红线） |
-| `notifications` / `alarms` / `contextMenus` / `sidePanel` | `ui.chrome` |
-| `host_permissions` / `<all_urls>` | `origin` 列表 |
-| 未知权限 | **不授予任何能力**，并写入 `warnings` |
+## 3. FenestraApi（全部可逆）
 
-最后一条很关键：遇到不认识的权限，归一器**默认拒绝**并报告，而不是"先给了再说"。
+| 方法 | 作用 | 卸载时 |
+| --- | --- | --- |
+| `provide<T>(name, value)` | 登记一个服务 | 自动移除 |
+| `get<T>(name)` | 读取当前可见服务 | — |
+| `effect(label, setup, cleanup)` | 登记 setup/cleanup 对 | cleanup **逆序**执行 |
+| `on(event, listener)` | 登记事件监听 | 自动移除 |
+| `permissions()` | 返回本插件声明的能力 | — |
 
-`to_hep()` 可以把归一结果写回纯文本 FEP，人能直接读懂、手工改。测试 `all_three_flavors_produce_installable_hep_manifests` 验证三家样例都能走完 `manifest.json → FEP → Manifest::parse → Shell::install` 全链路。
+插件登记的一切挂在自己的 Fiber 上，`fiber.dispose()` 逆序回滚、无残留（[packages/core](./packages/core/) 11 个测试）。**禁止**把状态挂到插件作用域之外，否则卸载会残留。
 
-```bash
-cargo run -- compat examples/extensions/firefox.json
-```
+## 4. 生命周期
 
----
+`load`（登记，不执行）→ `enable`（挂 Fiber、await 生效）→ `disable`（dispose、逆序回滚）→ `unload`（删除定义与记录）。`install = load + enable`；disable 后可再 enable，**进程不重启**，满足「现安装、现跑、现用、完全不需要重启」。
 
-## 4. FEP 自有扩展为什么更好
+## 5. 示例插件
 
-| 痛点（三家兼容层） | FEP 自有扩展 |
-| --- | --- |
-| 权限是字符串，含义靠文档约定，还会随版本变 | 能力是内核封闭枚举，未知即拒绝 |
-| 安装时不算权限，运行时才拦截 | `Grant::intersect` 在安装时求最小权限交集 |
-| 后台模型三家不同，状态容易被回收 | 生命周期由可逆注册管理，卸载精确撤销 |
-| 沙盒策略由浏览器决定 | `sandbox-policy` 也是可换插件，`harden()` 可冻结能力 |
-| 扩展只能改页面／UI | 渲染引擎、网络栈、UI、协议处理都是同一套插件体系 |
-| 清单差异要靠构建期多份 manifest | 一份纯文本清单，跨平台、可审计 |
+| 插件 | 目录 | 验证的承诺 |
+| --- | --- | --- |
+| 默认新标签页 | [packages/plugins/newtab](./packages/plugins/newtab/) | 提供 `ui/newtab` 服务 |
+| 示例替换 | [packages/plugins/example-replace](./packages/plugins/example-replace/) | 同名服务覆盖默认；卸载靠可逆登记自动恢复 |
+| DNS 加速 | [packages/plugins/accelerate](./packages/plugins/accelerate/) | DNS 缓存 + 悬停预连接意图登记，卸载清空无残留 |
 
-一句话：兼容层负责"把老世界接进来"，FEP 负责"让新东西不必背老世界的包袱"。
+三个插件 `pnpm run plugins:typecheck` 通过；端到端「替换 / 恢复」演示测试尚未写，见 [README.md](./README.md) 状态表。
 
----
+## 6. 能力命名与隐私红线
 
-## 5. 目前还做不到的事
+能力用点分字符串（如 `ui.newtab`、`net.dns`、`net.preconnect`）。涉及剪贴板 / 档案 / 摄像头 / 位置 / 遥测的能力属于隐私红线，须用户逐项显式确认，默认拒绝，见 [SECURITY.md](./SECURITY.md) 与 [crates/gate](./crates/gate/) 的 `Capability`。
 
-诚实清单，避免被当成已完成：
+## 7. Stage 2 预留
 
-- [ ] **执行扩展代码**：归一器只读清单、只算能力，不加载 wasm、不启动 JS 运行时。真正的执行在 `ExtensionRuntime` 插件里（Stage 1）。
-- [ ] **API shim**：`chrome.*` / `browser.*` 的运行时垫片尚未实现，需要 Promise 统一层。
-- [ ] **DNR 规则转换**：`declarativeNetRequest` 规则集到 Fenestra 能力模型的转换尚未实现。
-- [ ] **商店与签名**：没有插件商店、没有签名验证、没有来源审计（Stage 2）。
-- [ ] **移动端 API 差异**：Firefox Android 不支持 omnibox 这类差异目前只在 warnings 里提示，没有运行时降级。
+- 内核 API 不绑定任何一家扩展清单格式；
+- Stage 0 归档分支里的三家扩展归一器与 6 个集成测试，做兼容层时直接取回；
+- 兼容层允许性能差异，但 Chrome MV3 / Edge MV3 / Firefox MV3 的功能覆盖要**逐条列进文档**；
+- 自有插件在能力与性能上保持最优（一等公民）。
 
----
-
-## 6. 写一个 FEP 扩展
-
-最小可用清单：
-
-```text
-# 注释：一个只读页面标注插件
-id: com.example.annotate
-name: Page Annotator
-version: 1.0.0
-kind: other
-entry: annotate.wasm
-capability: ui.content
-capability: storage.read
-origin: https://example.com/*
-```
-
-```bash
-cargo run -- verify examples/annotate.fep
-```
-
-规则见 [ARCHITECTURE.md 第 3 节](ARCHITECTURE.md#3-hep-清单格式)。注意：声明了能力不代表拿到能力，用户授权与运行时仲裁各过一次。
+设计原则见 [PRINCIPLES.md](./PRINCIPLES.md)，架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)。

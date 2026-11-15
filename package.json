@@ -1,0 +1,28 @@
+{
+  "name": "fenestra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fenestra — only a shell, everything else is a plugin",
+  "license": "SEE LICENSE IN LICENSE",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "gate:test": "cargo test -p fenestra-gate",
+    "core:test": "pnpm --filter @fenestra/core test",
+    "core:typecheck": "pnpm --filter @fenestra/core typecheck",
+    "plugins:typecheck": "pnpm --filter @fenestra/plugin-* typecheck",
+    "ui:build": "pnpm --filter @fenestra/ui build",
+    "build": "pnpm --filter @fenestra/ui build",
+    "test": "pnpm --filter @fenestra/core test",
+    "typecheck": "pnpm --filter @fenestra/core typecheck && pnpm --filter @fenestra/plugin-* typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

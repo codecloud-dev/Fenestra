@@ -1,56 +1,50 @@
-# 贡献指南
+# 贡献指南 / Contributing
 
-欢迎贡献。先说三件容易踩坑的事。
+> 欢迎贡献。Fenestra 只是个壳，其余皆插件 —— 但**贡献者协议只覆盖层 A**。
 
-## 1. 许可证边界（务必先读）
+## 1. 先分清你在改哪一层
 
-本项目使用自撰的 [Fenestra Source License v1.0](LICENSE)，**不是 OSI 开源许可证**：
+| 层 | 目录 | 许可 | 贡献 |
+| --- | --- | --- | --- |
+| **A** | [crates/gate](./crates/gate/)、[packages/core](./packages/core/)、[packages/plugins](./packages/plugins/) 示例、[apps/shell/src-tauri](./apps/shell/src-tauri/)、[EXTENSIONS.md](./EXTENSIONS.md) FEP 规范 | [LICENSE](./LICENSE)（自撰开源） | ✅ 欢迎 PR，见下文 |
+| **B** | 官方增值插件 / 未来企业版（本仓库当前尚无） | [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL)（FSL v1.0） | 授权发放与收款单独记账，不混进层 A 治理 |
 
-- 你可以免费阅读、修改、自建自用，用于非商业目的；
-- 你提交的贡献视为同意按本协议公开，并授予版权人可用于商业版本的非独占使用权；**版权不转让，不需要签 CLA，署名保留**（LICENSE 第 8 条）；
-- 你把改过的版本提供给第三方时，必须公开完整对应源码（第 5 条）；
-- 任何派生版本不得弱化隐私、安全、自由、速度与兼容（第 6 条）；
-- 商业使用需向版权人取得小额付费授权（第 4 条）。
+向层 A 提交贡献，视为同意按 [LICENSE](./LICENSE) 第 8 条公开：保留署名、版权不转让、**无需签署 CLA**；版权人不得抹去署名单独重新许可给第三方。
 
-如果你所在组织不允许在这类条款下贡献代码，请不要提交 PR；提出问题与建议同样有价值。
-
-## 2. 内核的红线
-
-- **零第三方依赖**：`Cargo.toml` 的 `[dependencies]` 必须保持为空，CI 有守门脚本。确实需要引入依赖，先开 issue 讨论并同步修改 ROADMAP 的贯穿约束。
-- **内核只做三件事**：读清单、仲裁能力、可逆登记。任何"用户能感知的浏览器功能"都应放进插件，不要往 `src/lib.rs` 里塞。
-- **能力枚举封闭**：新增 `Capability` 要同步更新 `ALL`、`as_str`、解析、测试、文档与 FEP 版本说明。
-- **未知即拒绝**：清单里出现未知字段／未知能力／无法映射的权限，一律报错或拒绝授予，不允许"先放过再说"。
-- **不弱化安全**：`default_deny`、`revalidate_untrusted_output`、隔离级别的改动必须有对应测试与说明。
-
-## 3. 开发流程
+## 2. 本地复现（提交前请真跑）
 
 ```bash
-cargo fmt --all
-cargo clippy --all-targets -- -D warnings
-cargo test --all-targets
-cargo run -- demo
-cargo run -- compat examples/extensions/firefox.json
+cargo test -p fenestra-gate                              # 18 passed / 0 failed
+cargo clippy -p fenestra-gate --all-targets -- -D warnings  # 通过
+pnpm install --frozen-lockfile
+pnpm --filter @fenestra/core typecheck                  # exit 0
+pnpm --filter @fenestra/core test                       # 11 passed / 0 failed
+pnpm run plugins:typecheck                             # 3/3 Done
+pnpm --filter @fenestra/ui build                        # exit 0
+bash scripts/check-licenses.sh                          # 双许可守门
+python3 scripts/check-docs.py                           # 文档 / 链接 / 命名守门
 ```
 
-提交前请确认以上全绿。PR 描述里请写清：
+CI 六 job（[.github/workflows/ci.yml](./.github/workflows/ci.yml)）：`gate / core / ui / shell / license-guard / docs`。**不许用 `continue-on-error` 或 `|| true` 把红变绿**；任何失败如实报告。
 
-1. 改了什么、为什么；
-2. 是否触及能力模型、清单格式或沙盒策略；
-3. 新增或修改了哪些测试；
-4. 对五不丢（[PRINCIPLES.md](PRINCIPLES.md)）有无影响。
+Tauri 外壳需 `libwebkit2gtk-4.1-dev` 等系统库，本沙箱缺、本地不编译；CI 的 `shell` job 安装依赖后 `cargo build --manifest-path apps/shell/src-tauri/Cargo.toml` 真编译。改了 [apps/shell/src-tauri](./apps/shell/src-tauri/) 请确保该 job 通过。
 
-## 4. 提交插件 / 扩展
+## 3. PR 要求
 
-Stage 0 只收清单样例与归一器的改进，不收可执行的插件包（还没有运行时、签名与商店）。
+- 一个 PR 只做一件事，标题写清改哪层、为什么；
+- 新增 / 修改行为**必须带测试**，且测试真实运行通过（贴通过数 / 失败数）；
+- 不改 GitHub 用户名 / 显示名 / bio，不碰其它仓库，不发无关的 PR 评论；
+- 不弱化默认拒绝 / 沙箱隔离 / 隐私红线 / 出站重校验 / 可逆登记（见 [PRINCIPLES.md](./PRINCIPLES.md)）；
+- 不写没有真机基准的性能数字，不承诺工期；
+- 许可证自撰、不用现成模板、不用 PGP。
 
-- FEP 清单一律放 `examples/`，并保证 `cargo run -- verify <file>` 通过；
-- 三家扩展的 `manifest.json` 样例放 `examples/extensions/`，并保证 `cargo run -- compat <file>` 通过；
-- 发现新的跨浏览器差异，请在 `src/compat.rs` 的 `warnings` 里补一条，并加测试。
+## 4. 代码约定
 
-## 5. 报告安全问题
+- Rust：`cargo fmt` 风格、`#![forbid(unsafe_code)]`、clippy `-D warnings` 零警告；
+- TypeScript：`strict`、可逆登记用 `FenestraApi`（`effect / provide / on`），不要把状态挂在插件外造成卸载残留；
+- 插件权限**只声明不授予**，授权交给闸门；
+- 文档中文为主、中英融合；链接用仓库内真实路径（[scripts/check-docs.py](./scripts/check-docs.py) 会校验）。
 
-**不要**在公开 issue 里贴 PoC。走 [SECURITY.md](SECURITY.md) 里的私有渠道。善意安全研究适用 LICENSE 第 3 条，不追究第 11 条责任。
+## 5. 行为准则
 
-## 6. 行为准则
-
-见 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。简单说：就事论事，不搞人身攻击，不贴别人的隐私数据。
+请读 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。安全问题见 [SECURITY.md](./SECURITY.md)，架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)，路线见 [ROADMAP.md](./ROADMAP.md)。

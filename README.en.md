@@ -1,98 +1,83 @@
-# Fenestra
+# Fenestra · Only a shell
 
-> **The browser is a shell. Everything else is a plugin.**
+> 只是个壳，其余皆插件 / *Only a shell, everything else is a plugin.*
 
-> **Why "Fenestra"?** Latin for *window*. A browser is a window: the frame should stay minimal, solid and replaceable, while everything you see through it is supplied by plugins. The name is about the view, not the frame.
+Fenestra is a deliberately tiny **browser shell**. The window, address bar, tabs and plugin manager are the shell; the rendering engine, network stack, UI and acceleration are all plugins — installed, run and removed **live, without restarting the process**. It ships under a two-layer license so "trustworthy" and "sustainable" do not have to be a trade-off.
 
-A tiny, cross-platform browser **shell**. Everything a browser normally ships with — rendering engine, network stack, address bar, tabs, bookmarks, history, downloads, settings, themes, protocol handlers, extension runtimes, even the sandbox policy — is a replaceable line in a plugin manifest.
+- **Layer A (truly open source)**: kernel, permission gate / capability arbitration, plugin runtime, FEP spec, example plugins.
+- **Layer B (source-available / paid commercial)**: official value-added plugins, future enterprise edition.
 
-- **Repository**: [github.com/codecloud-dev/Fenestra](https://github.com/codecloud-dev/Fenestra)
-- **License**: [Fenestra Source License v1.0](LICENSE) — source-available, **not** OSI open source. The author may use it commercially for free; anyone else needs a small paid commercial license; modifications must be published.
-- **Status**: **Stage 0 — kernel skeleton**, not a daily-driver browser. See [ROADMAP.md](ROADMAP.md).
+This README is the English companion; the authoritative, fuller Chinese document is [README.md](./README.md). Badges and the detailed status table live there.
 
-> The Chinese [README.md](README.md) is the canonical documentation. The Chinese LICENSE text governs.
+## Status (honest)
 
----
+We are at **Stage 1: the rewrite scaffold + a verifiable minimal chain**. Numbers below come from real local runs.
 
-## What actually exists today
+| Piece | Status | Evidence |
+| --- | --- | --- |
+| Rust gate [crates/gate](./crates/gate/) | ✅ tested locally | `cargo test -p fenestra-gate` → 18 passed / 0 failed; clippy `-D warnings` clean |
+| Cordis 4 runtime [packages/core](./packages/core/) | ✅ tested locally | `pnpm --filter @fenestra/core test` → 11 passed / 0 failed; typecheck exit 0 |
+| Svelte 5 + Vite 8 UI [packages/ui](./packages/ui/) | ✅ built locally | `pnpm --filter @fenestra/ui build` → vite 8.3.8, 110 modules, exit 0 |
+| Example plugins [packages/plugins](./packages/plugins/) | ✅ typechecked | `pnpm run plugins:typecheck` → 3/3 |
+| Tauri 2 shell [apps/shell/src-tauri](./apps/shell/src-tauri/) | ⚠️ **not built locally** | the sandbox lacks `libwebkit2gtk-4.1-dev`; compiled for real in CI after installing system deps |
+| End-to-end wiring (gate ↔ runtime ↔ IPC ↔ UI) | ⬜ not done | packages pass independently; integration is next |
 
-| Shipped and verified | Not shipped yet |
-| --- | --- |
-| Rust kernel with **zero third-party dependencies** | A graphical browser you can surf with |
-| FEP manifest format + hand-written parser | A real rendering-engine plugin (no bundled Blink/WebKit/Gecko) |
-| Capability model: default-deny, privacy-sensitive capabilities require explicit consent | OS-level process sandbox (only policy + arbitration layers so far) |
-| Reversible registry: install = register revocable effects, uninstall = exact revoke | Android / Windows / Linux installers |
-| Chrome / Edge / Firefox `manifest.json` → FEP normalizer (with a self-contained mini JSON parser) | Extension store, plugin signing and distribution |
-| 39 tests green (33 unit + 6 integration), `cargo fmt` and `clippy -D warnings` clean | Performance benchmarks and real-device smoothness data |
-| CI on Linux / Windows / macOS + compile checks for Android and iOS targets | — |
+We do **not** publish unbenchmarked performance numbers and do **not** promise a release date.
 
-The kernel does exactly three things: **read a manifest**, **arbitrate capabilities**, **register revocable effects**. It contains no rendering, no networking, no UI, and no telemetry.
+## Tech stack (pinned)
 
----
+| Module | Choice | Verified version |
+| --- | --- | --- |
+| Plugin kernel | Cordis 4 + TypeScript | `cordis 4.0.0-rc.13` |
+| Shell | Tauri 2 + Rust | Tauri 2.11.5 stable line; `@tauri-apps/cli 2.12.4`, `@tauri-apps/api 2.12.4`; Rust crate on the `2` line, Cargo-locked |
+| UI | Svelte 5 | `svelte 5.57.3` |
+| Build | Vite 8 + pnpm 10 + Cargo | `vite 8.3.8`, `pnpm 10.28.2` |
+| Default render | system WebView (wry) | no bundled engine; Servo is the Stage 1 swappable-engine plugin |
 
-## Why "more extreme" than "everything is a plugin"
+The engine is abstracted as a `RenderEngine` trait in [apps/shell/src-tauri/src/lib.rs](./apps/shell/src-tauri/src/lib.rs) — registration, not compile-time binding.
 
-We researched [DSH (DeepSeek Harness)](docs/research/dsh-everything-is-a-plugin.md), whose "everything is a plugin" architecture (Cordis kernel, MIT, reversible effects) is genuinely clean: model adapters, tool registry, session log, agent loop, system prompt, execution sandbox and UI are all plugins.
+## Dual licensing
 
-But DSH's plugin boundary stops at **application-level capabilities**. The runtime (TypeScript / Node / Electron), the Cordis kernel itself, the process model and the host OS sandbox are given, not replaceable. Its own README declares *developer preview* with compatibility-breaking changes ahead.
+| Layer | Covers | License |
+| --- | --- | --- |
+| **A** | kernel, gate / arbitration, runtime, FEP, example plugins | [LICENSE](./LICENSE) — *Fenestra Open License v1.0*, a self-written permissive OSD-conforming license (**not OSI-approved**); **released versions may never be re-proprietarized** |
+| **B** | official value-added plugins, future enterprise edition | [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL) — *Fenestra Source License (FSL) v1.0* verbatim; paid commercial use, modifications must stay open |
 
-Fenestra pushes one step further: the **engine, network stack, platform backend, UI, extension runtime and sandbox policy are all plugins**. Honest counterpoint: DSH has a real plugin ecosystem; Fenestra currently has 39 tests. A more extreme architecture is not a more mature product.
+Boundary rules: Layer A's API/ABI and the gate itself stay open forever; Layer B may **never** weaken default-deny, sandbox isolation, privacy red lines, or outbound revalidation — not even for paying customers. The contributor agreement covers Layer A only. See [README.md](./README.md) §双许可边界.
 
----
-
-## Five things that must not be lost
-
-Freedom, privacy, handiness, speed and smoothness are written into [Article 6 of the LICENSE](LICENSE) as enforceable, testable clauses, and into [PRINCIPLES.md](PRINCIPLES.md). For example:
-
-- `telemetry`, `profile.read`, `clipboard.read`, `device.camera`, `device.location` are privacy-red-line capabilities — never granted without explicit per-capability user confirmation.
-- Every engine/network/UI/runtime is behind a trait; `uninstall()` revokes services, subscriptions and capabilities together.
-- The kernel starts no runtime, opens no socket and waits for nothing.
-
----
-
-## Try it
+## Reproduce locally
 
 ```bash
-git clone https://github.com/codecloud-dev/Fenestra.git
-cd fenestra
-cargo test --all-targets
-cargo run -- demo
-cargo run -- compat examples/extensions/firefox.json
-cargo run -- verify examples/engine.fep
-cargo run -- policy
-cargo run -- targets
+cargo test -p fenestra-gate
+cargo clippy -p fenestra-gate --all-targets -- -D warnings
+pnpm install --frozen-lockfile
+pnpm --filter @fenestra/core typecheck
+pnpm --filter @fenestra/core test
+pnpm run plugins:typecheck
+pnpm --filter @fenestra/ui build
+bash scripts/check-licenses.sh
+python3 scripts/check-docs.py
 ```
 
-A FEP manifest:
+The Tauri shell needs system libraries (`libwebkit2gtk-4.1-dev` and friends); it is built only in CI's `shell` job:
 
-```text
-id: org.fenestra.engine.blink
-name: Blink Engine Adapter
-version: 0.1.0
-kind: render-engine
-entry: engines/blink.wasm
-capability: engine.swap
-capability: net.connect
+```bash
+cargo build --manifest-path apps/shell/src-tauri/Cargo.toml
 ```
 
----
+## Security invariants
 
-## Extension compatibility
+Default deny, least-privilege intersection, explicit per-capability consent for privacy red lines, BlastDoor-style `Untrusted<T>` outbound revalidation, and revertible registration — all in [crates/gate](./crates/gate/) with 18 tests. Reversibility on the TS side comes from Cordis 4's revertible effects ([packages/core](./packages/core/), 11 tests). See [SECURITY.md](./SECURITY.md).
 
-Chrome MV3, Edge MV3 and Firefox MV3 manifests all normalize to the same FEP manifest and go through the same capability arbiter. Differences are **not** silently smoothed over: `declarativeNetRequest` vs `webRequest`, service worker vs event page, `browser_specific_settings.gecko.id`, `data_collection_permissions` (Firefox ≥ 142), and namespace/promise differences are surfaced as `warnings`. See [EXTENSIONS.md](EXTENSIONS.md).
+## Roadmap & docs
 
-Fenestra's native FEP extensions are strictly better than the compatibility layer: capabilities are declarative, the least-privilege intersection is computed at install time, and there is no guessing what a permission string means.
+- [ARCHITECTURE.md](./ARCHITECTURE.md) · [ROADMAP.md](./ROADMAP.md) · [PRINCIPLES.md](./PRINCIPLES.md)
+- [EXTENSIONS.md](./EXTENSIONS.md) (FEP) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CHANGELOG.md](./CHANGELOG.md)
 
----
+**Stage 2 is a hard acceptance item**: full Chrome MV3 / Edge MV3 / Firefox MV3 compatibility, with first-class Fenestra-native plugins best in capability and performance. MVP does not build the compatibility layer, but the kernel API is designed for it from day one.
 
-## Security
+## Non-goals
 
-Modeled on Apple's containment approach in Messages / Safari (BlastDoor, Enhanced Security Extensions): untrusted data is "detonated" inside a near-privilegeless isolated unit, and **its output is still treated as untrusted** — the privileged side must re-validate simple types. In Fenestra this is `SandboxPolicy::detonate()` → `Untrusted<T>::revalidate()`, a type-level reminder, not a convention. Research and sources: [docs/research/apple-sandbox.md](docs/research/apple-sandbox.md).
+No self-written HTML/CSS/JS engine, no feature-parity race, no kernel/VPN/cross-border acceleration, no accounts / cloud sync / telemetry, no user data collection, zero operating cost. No release-date promises.
 
-Honest boundary: Stage 0 has the policy and arbitration layers, **not** an OS-level process isolation implementation.
-
----
-
-## License in one paragraph
-
-The author may use Fenestra commercially, free and without explanation. Everyone else may read, modify and self-host it for non-commercial purposes for free; **commercial use requires a small, transparent, non-discriminatory paid license**. Any modified version distributed or offered to third parties (including as a service) **must publish its complete corresponding source** under the same terms — paying does not buy the right to close the source. No derivative may lock down plugins, add covert telemetry, weaken the sandbox, deliberately slow the browser, or break Chrome/Edge/Firefox extension compatibility. Full text: [LICENSE](LICENSE).
+*Fenestra · codecloud-dev · 2026 · [LICENSE](./LICENSE) / [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL)*

@@ -1,0 +1,16 @@
+{
+  "name": "@fenestra/plugin-example-replace",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "示例替换插件：替换默认新标签页，卸载后自动恢复默认",
+  "license": "LicenseRef-Fenestra-Open-1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@fenestra/core": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

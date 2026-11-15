@@ -1,33 +1,48 @@
-# 变更记录
+# 变更记录 / Changelog
 
-本项目使用语义化版本。Stage 0 期间版本号为 `0.1.x`。
+> 格式：按版本倒序。所有「通过」均来自真实执行，不写未验证的性能数字、不承诺工期。
 
-## [0.1.0] — 2026-11-15
+## 0.1.0 · Stage 1 推翻重写（2026-11-15）
 
-首个公开版本：**空壳内核与它的可验证契约**。不含图形界面，不能上网，见 [ROADMAP.md](ROADMAP.md)。
+按方向定稿 §9「开工」授权，从 `9ee4bd4` 之后重写主干。
 
-### 新增
+### 归档 Stage 0（不删文件、不丢测试）
 
-- **内核**：零第三方依赖的 Rust crate，只有「读清单 / 仲裁能力 / 可逆登记」三件事。
-- **FEP v1 清单**：纯文本逐行格式，自研解析器；单例字段重复、未知字段、未知能力一律报错。
-- **能力模型**：封闭的 15 项 `Capability` 枚举；`Grant::intersect` 安装时求最小权限交集；`Grant::sanitized` 剔除隐私红线。
-- **沙盒策略**：`SandboxPolicy` 三重闸门（锁定模式 / 隐私显式确认 / 默认拒绝）；`harden()` 冻结安全红线；`weakened()` 检测策略被削弱。
-- **Containment**：`detonate()` → `Untrusted<T>` → `revalidate()`，类型级强制出站数据重校验，对标 Apple BlastDoor 思路。
-- **可逆注册**：`Registry::register` / `revoke` / `revoke_plugin`；服务与订阅按 `PluginKind` 推导，卸载精确撤销。
-- **三家扩展兼容层**：自研迷你 JSON 解析器；Chrome / Edge / Firefox `manifest.json` → FEP；方言差异输出 `warnings`；`to_hep()` 双向可审计。
-- **平台**：`Target` 覆盖 Android / iOS / Windows / Linux / macOS 及对应 Rust triple；`engine.rs` 提供 `RenderEngine` / `NetworkStack` / `ShellUi` / `PlatformBackend` / `ExtensionRuntime` 五个可插拔 trait，内核无任何实现。
-- **CLI**：`verify` / `compat` / `demo` / `policy` / `targets` / `--version`。
-- **测试**：33 个单元测试 + 6 个集成测试，共 39 个，全绿；`cargo fmt --check`、`cargo clippy -D warnings` 干净。
-- **CI**：Linux / Windows / macOS 三平台全流程；Android / iOS target 编译检查；零依赖与自撰许可证守门；文档齐备性检查。
-- **许可证**：自撰 [Fenestra Source License v1.0](LICENSE)。源码可见、非 OSI 开源；作者可免费商用，他人商用需小额付费授权；任何改版必须公开完整对应源码；第 6 条把五不丢写成可判定条款。
-- **文档**：中英 README、架构、安全、扩展、原则、路线图、贡献指南、行为准则，以及三份联网调研（DSH「一切皆插件」/ Apple 沙盒 / 2026 引擎格局）。
+- 新建远端分支 `archive/stage0-rust-kernel` 与轻量 tag `stage0`，均指向 `9ee4bd4`。
+- 归档分支 tree 与当时 main 完全一致（`git ls-tree -r` 计数 **37** 个追踪文件；定稿 §7 写「46 文件」为口径差异）；在归档 worktree 实跑 `cargo test` → **33 单元 + 6 集成 = 39 测试全绿**。
+- **迁移设计，不迁移代码**：默认拒绝、最小权限交集、隐私逐项确认、`Untrusted<T>` 出站重校验、可逆登记在新架构重新实现。
 
-### 明确未包含
+### 双许可拆分
 
-图形界面、真实渲染引擎插件、网络栈插件、OS 级进程隔离、插件签名、插件商店、安装包、性能基准数据。这些在 [ROADMAP.md](ROADMAP.md) 的 Stage 1–3 中逐条列出验收方式。
+- 新增 [LICENSE](./LICENSE)：层 A *Fenestra Open License v1.0* —— 自撰、符合 OSD 的宽松开源许可，非 OSI 认证，写明**已公开版本不得重新闭源**、层 A 永久开源、层 B 不得弱化安全不变量。
+- 新增 [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL)：层 B，原 `LICENSE`（*Fenestra Source License v1.0* FSL）**逐字节原文**搬入，商用付费、改动必须开源、五不丢。
 
-### 设计取舍
+### 新架构脚手架（技术栈钉死）
 
-- 不使用现成 JSON 库、插件框架或许可证模板：内核必须在任何运行时启动之前可读清单，且保持零依赖。
-- 不内置任何引擎：调研 2026 引擎格局后确认，从零造引擎不是本项目的战场，见 [`docs/research/browser-engines-2026.md`](docs/research/browser-engines-2026.md)。
-- 不宣称"开源"：许可证对商业使用作了区分，不满足 OSD，见 LICENSE 第 0 条。
+- 根：[Cargo.toml](./Cargo.toml)（workspace 仅含 gate + exclude shell）、[package.json](./package.json)、[pnpm-workspace.yaml](./pnpm-workspace.yaml)、[tsconfig.base.json](./tsconfig.base.json)。
+- [crates/gate](./crates/gate/)：纯 Rust 零依赖权限闸门，18 测试；`cargo clippy -D warnings` 通过。
+- [packages/core](./packages/core/)：Cordis 4 插件运行时（load / enable / disable / unload / install、逆序回滚、热装不重启），11 测试、typecheck 通过。
+- [packages/ui](./packages/ui/)：Svelte 5 + Vite 8 前端壳（地址栏 / 前进后退刷新 / 新标签页 / 插件管理页），`vite build` 通过。
+- [packages/plugins](./packages/plugins/)：默认新标签页、示例替换、DNS 缓存 + 悬停预连接三个插件，3/3 typecheck 通过。
+- [apps/shell/src-tauri](./apps/shell/src-tauri/)：Tauri 2 外壳，`RenderEngine` 可替换引擎接口层。**本地未编译**（缺 `libwebkit2gtk-4.1-dev`），由 CI 编译验证。
+
+### CI 与守门
+
+- [.github/workflows/ci.yml](./.github/workflows/ci.yml) 六 job：`gate / core / ui / shell / license-guard / docs`；保留原有 [.github/dependabot.yml](./.github/dependabot.yml)。
+- 新增 [scripts/check-licenses.sh](./scripts/check-licenses.sh)（双许可守门）与 [scripts/check-docs.py](./scripts/check-docs.py)（链接 / 命名 / 徽章守门）。
+
+### 文档
+
+- [README.md](./README.md) 全面重写：双行徽章（stage 改 Stage 1）、「现在做到哪一步」诚实表、双许可边界、MVP 六件事验收表、stage0 归档说明。
+- 同步 [README.en.md](./README.en.md)、[ARCHITECTURE.md](./ARCHITECTURE.md)、[ROADMAP.md](./ROADMAP.md)、[PRINCIPLES.md](./PRINCIPLES.md)、[SECURITY.md](./SECURITY.md)、[CONTRIBUTING.md](./CONTRIBUTING.md)、[EXTENSIONS.md](./EXTENSIONS.md)。
+
+### 诚实标注的未完成项
+
+端到端集成（Rust 闸门 ↔ TS 运行时 ↔ Tauri IPC ↔ UI）、敏感操作授权弹窗、真实网页渲染与引擎替换、三家扩展兼容层（Stage 2）均**未做**，见 [README.md](./README.md) 状态表。
+
+---
+
+## Stage 0 · 9ee4bd4（已归档）
+
+- 零依赖 Rust 内核，39 测试全绿；FEP 清单、自撰 FSL、三份联网调研、三家扩展归一器与 6 个集成测试。
+- 全量改名完成，仓库元数据补齐；该状态由 `stage0` tag 与 `archive/stage0-rust-kernel` 分支永久保留。

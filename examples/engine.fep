@@ -1,9 +1,0 @@
-# 渲染引擎也是一个插件 —— 换引擎只需换这一行 entry
-id: org.fenestra.engine.blink
-name: Blink Engine Adapter
-version: 0.1.0
-kind: render-engine
-entry: engines/blink.wasm
-target: linux
-capability: engine.swap
-capability: net.connect

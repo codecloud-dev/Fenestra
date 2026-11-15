@@ -1,63 +1,53 @@
-# 五不丢：把口号写成可验收条款
+# 原则 / Principles
 
-用户提的五条要求如果只写在 README 里，很快就变成装饰。这里的做法是：每条都同时落到 **许可证条款** 和 **代码／CI 可验证事实** 上。
+> 把口号写成可验收条款。这些原则约束代码、文档与双许可，Stage 0 与 Stage 1 一脉相承（迁移设计，不迁移代码）。
 
-| 原则 | 许可证 | 代码落地点 | 可验证动作 |
-| --- | --- | --- | --- |
-| 自由性 | 第 6.3 条 | `engine.rs` 全部 trait；`Registry::revoke`；`PluginKind` 含 `render-engine` / `network-stack` / `sandbox-policy` | `cargo test uninstall_is_reversible` |
-| 隐私性 | 第 6.1 条 | `Capability::is_privacy_sensitive`、`Grant::sanitized`、`SandboxPolicy::decide` | `cargo test telemetry_is_blocked_until_user_confirms` |
-| 快捷性 | 第 6.4 条 | FEP 逐行解析、内核不启动运行时/不联网/不等待 | `cargo run -- verify examples/engine.fep` 即时返回 |
-| 快速性 | 第 6.4 / 6.5 条 | `Cargo.toml` 零依赖；CI 守门脚本拒绝新增依赖 | `cargo tree` 为空；CI `zero-dependency-guard` |
-| 流畅度 | 第 6.5 条 | 渲染路径全在 `RenderEngine` 插件侧，内核不介入帧循环 | Stage 1 起补真机帧时间基准（**目前尚未做**） |
+## 1. 只是个壳，其余皆插件
 
----
+窗口、地址栏、标签页、插件管理是壳；渲染引擎、网络栈、界面、加速能力都是插件。一切可改：默认新标签页可被替换，卸载后自动恢复；引擎抽象成 [apps/shell/src-tauri/src/lib.rs](./apps/shell/src-tauri/src/lib.rs) 的 `RenderEngine` trait，注册而非编译期绑定。
 
-## 自由性
+## 2. 默认拒绝 / Default deny
 
-**条款**：不得移除用户卸载任意插件、更换渲染引擎／网络栈／界面／扩展运行时、导出全部本地数据、关闭任何内置服务、完全离线运行的能力；不得加入"只能从单一商店安装插件"的限制。
+任何能力，未显式声明、不在策略上限、未经用户逐项确认，一律拒绝。实现见 [crates/gate](./crates/gate/) 的 `Gate::check()`，18 个测试守着。声明 ≠ 授权：插件 `meta.permissions` 只是声明，[packages/core](./packages/core/) 不自动授予。
 
-**代码事实**：内核里没有任何功能实现，因此也没有"无法关闭的内置服务"。所有可替换点都是 trait，`kind` 枚举里明确列出了引擎、网络栈、沙盒策略。安装是登记，卸载是一次 `retain`。
+## 3. 最小权限交集 / Least privilege
 
-**还缺什么**：Stage 0 没有 UI，所以"用户能点的地方"还不存在。条款先立好，Stage 1 做 UI 时必须逐条对照。
+有效能力 = 声明集 ∩ 策略上限 ∩ 用户确认集（`Gate::effective()`），只取交集、不放宽。隐私红线能力（`ClipboardRead / ProfileRead / CameraDevice / LocationDevice / Telemetry`）必须**逐项**确认，确认一个不连带放行另一个。
 
-## 隐私性
+## 4. 出站重校验 / BlastDoor
 
-**条款**：不得默认收集或上传浏览历史、页面内容、剪贴板、位置、凭据、设备指纹；不得植入未经用户明示同意且可随时关闭的遥测；不得在用户未逐项确认的情况下启用隐私红线能力。
+隔离单元产出的数据包成 `Untrusted<T>`，**不暴露内部值**；离开隔离边界前必须 `revalidate()` 通过才得到 `Trusted<T>`，校验失败则丢弃。不许留后门绕过校验。
 
-**代码事实**：五类隐私红线能力在 `is_privacy_sensitive()` 中硬编码，`decide()` 在 `user_confirmed == false` 时一律 `Deny`，即使该能力已经被授予。这一层不能靠插件自觉，因为它在共同上游。
+## 5. 可逆登记 / Revertible everything
 
-`Grant::sanitized(false)` 让设置界面可以一次性剔除所有隐私红线，避免 UI 漏勾。
+插件注册的任何东西都能逆序、无残留地撤销。Rust 侧 `RevertibleRegistry` / `Gate::revoke()`；TS 侧 Cordis 4 的 `ctx.effect / provide / on` + `fiber.dispose()`（[packages/core](./packages/core/) 11 个测试断言 LIFO 逆序与无残留）。装 / 卸插件**现装现跑、进程不重启**。
 
-**诚实边界**：内核不收集数据，但**插件可以**。Stage 1 需要插件签名／权限公示／出站流量可观测，否则"隐私不丢"只守住了内核这一半。
+## 6. 隐私与自由
 
-## 快捷性
+- 不默认收集或上传浏览历史、页面内容、剪贴板、位置、凭据、设备指纹；不植入未经明示同意且可随时关闭的遥测。
+- 不得移除用户卸载任意插件、更换引擎 / 网络栈 / 界面、导出本地数据、完全离线运行的能力；不得加入「只能从单一商店装插件」的限制。
+- 纯本地、零运营成本、不收任何用户数据。
 
-**条款**：不得人为引入启动等待、强制广告、人为限速、无谓的后台常驻，或与浏览功能无关的弹窗、联网阻塞。
+## 7. 双许可边界不可侵蚀
 
-**代码事实**：清单是纯文本逐行解析；`Shell::install` 不加载 wasm、不启动 JS 运行时、不发网络请求；`cargo run -- demo` 从启动到结束是一次同步执行。
+- 层 A 的 API / ABI 与闸门本体**永久开源**，[LICENSE](./LICENSE) 写明**已公开版本不得重新闭源**；
+- 层 B [LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL) 不得弱化默认拒绝 / 沙箱隔离 / 隐私红线 / 出站重校验，**付了钱也不行**；
+- 贡献者协议只覆盖层 A；层 B 授权与收款单独记账。
+- 层 A 自撰、符合 OSD 实质，但**不是「OSI 认证许可」**，也不叫任何既有许可证的变体。
 
-判断标准写的是"人为引入"，不是"零耗时"——加载真实引擎当然要花时间，禁止的是与功能无关的等待。
+## 8. 引擎：不自己从零写，但可替换
 
-## 快速性
+不自研 HTML/CSS/JS 引擎。MVP 用系统 WebView（wry）保小体积与跨平台；Servo 是 Stage 1 可替换引擎插件，先在 Linux X11 跑通受控页面、量**真实**体积与兼容缺口，再据实决定。不把 Servo 说成能跑任意网站。
 
-**条款**：许可证禁止人为限速与后台常驻；技术侧要求内核保持极小。
+## 9. 兼容：自有最好，三家全兼容
 
-**代码事实**：`[dependencies]` 为空；CI 有 `zero-dependency-guard` 检查 `Cargo.toml` 与 `cargo tree`；`cargo clippy -- -D warnings` 保证没有藏着的性能与正确性问题。
+MVP 不做兼容层，但内核 API 从第一天按「自有扩展一等公民 + Chrome / Edge / Firefox 三家可映射」设计。Stage 2 是**硬验收项**：三家 MV3 全兼容，兼容层允许性能差异，功能覆盖逐条列进文档。见 [ROADMAP.md](./ROADMAP.md) 与 [EXTENSIONS.md](./EXTENSIONS.md)。
 
-**诚实边界**：零依赖不等于快。真正的速度数据在接上引擎之后才有意义，现在不编数字。
+## 10. 诚实 / Honesty
 
-## 流畅度
+- 不吹牛：所有「通过」都来自真实执行，贴真实通过数 / 失败数；CI 不把红变绿，不用 `continue-on-error` 掩盖失败。
+- 不写没跑过的性能数字，不承诺工期（工期等最小链路跑通再估）。
+- 本地没编译的东西如实说没编译：本沙箱缺 `libwebkit2gtk-4.1-dev`，[apps/shell/src-tauri](./apps/shell/src-tauri/) 由 CI 编译，本地不假装跑过。
+- 「现在做到哪一步」表见 [README.md](./README.md)：已做 / 部分 / 未做逐项标注。
 
-**条款**：不得以商业、推广或遥测目的故意降低渲染与交互性能。
-
-**代码事实**：渲染路径完全在 `RenderEngine` 插件内，内核只做能力仲裁，所以内核无法成为帧循环的瓶颈——这是架构上的保证，不是优化出来的。
-
-**目前未验收**：没有真机帧时间、输入延迟、滚动流畅度基准。ROADMAP Stage 2 把"三平台 60fps 基准 + 回归门槛"列为硬性验收项，在那之前不会在 README 里写"流畅"。
-
----
-
-## 为什么把原则写进许可证
-
-因为这些要求约束的不只是我们，还包括所有拿 Fenestra 做派生版本的人。写在 README 里，改的人可以删掉；写在许可证第 6 条里，删掉就构成违约，第 5.1(e) 条明确要求派生版本保留它，第 7 条进一步规定违反者不得使用 Fenestra 名称。
-
-第 6.7 条给了判定口径：**按普通用户能否实际获得该能力判断，而不是按代码里是否存在某个开关判断**。这样"我留了个开关但藏在第十层设置里"不构成合规。
+架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)，安全见 [SECURITY.md](./SECURITY.md)。

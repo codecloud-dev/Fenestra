@@ -1,84 +1,62 @@
-# 安全设计与威胁模型
+# 安全设计与威胁模型 / Security
 
-## 0. 先说清楚现在有什么、没有什么
+> 内核唯一钉死的不变量，落在 [crates/gate](./crates/gate/)（纯 Rust、零第三方依赖、可独立 `cargo test`）。本文说明威胁模型、不变量、隐私承诺，以及**当前尚未做完**的部分。
 
-**已有**：能力模型（默认拒绝）、隐私红线显式确认、锁定模式、隔离单元"引爆 → 出站重校验"的类型级约束、策略削弱检测、可逆卸载、三家扩展清单的只读归一。
+## 1. 信任边界
 
-**没有**：OS 级进程隔离实现（seccomp / AppContainer / Seatbelt / Landlock）、站点隔离、真实引擎沙盒、插件签名与来源验证、内存安全执行环境之外的审计。
+```
+不可信：网页内容 / 第三方插件 / 隔离单元输出 / 网络入站数据
+   │  （必须经过闸门与出站重校验）
+可信：壳本体（窗口、地址栏、插件运行时调度）/ Rust 闸门 / 用户显式确认
+```
 
-策略写得对，不等于沙盒已经落地。ROADMAP Stage 2 才做平台后端插件里的真实隔离。把这些分开写，是为了不给自己发假绿卡。
+浏览器里运行的网页、插件与扩展由各自作者负责，不由 Fenestra 担保；安装第三方插件的风险由用户承担。
 
----
+## 2. 五个不变量（18 个测试）
 
-## 1. 对标苹果，对标的是什么
+| 不变量 | 实现 | 测试 |
+| --- | --- | --- |
+| 默认拒绝 | `Gate::check()` 未声明 / 超策略 / 未确认一律 `Deny` | `default_deny_*` / `undeclared_*` |
+| 最小权限交集 | `Gate::effective()` = 声明 ∩ 策略 ∩ 确认 | `effective_is_minimum_privilege_intersection` |
+| 隐私红线逐项确认 | `is_privacy_sensitive()` + `confirm()` | `privacy_*` / `consent_is_granted_per_capability` |
+| BlastDoor 出站重校验 | `Untrusted<T>` → `revalidate()` → `Trusted<T>`，无 bypass | `untrusted_*` / `revalidate_*` |
+| 可逆登记 | `RevertibleRegistry` / `Gate::revoke()` 逆序回滚无残留 | `registry_*` / `gate_revoke_*` / `revoke_isolates_plugins` |
 
-联网调研（出处与原文摘录见 [`docs/research/apple-sandbox.md`](docs/research/apple-sandbox.md)）后，我们认为值得抄的不是某个 API，而是三条**思路**：
+TS 侧的可逆性由 Cordis 4 revertible effects 保证（[packages/core](./packages/core/) 11 个测试：逆序 cleanup、服务/监听自动回收、卸载无残留、多插件隔离、热装不重启）。
 
-1. **Containment（围堵）**：Apple 在 Messages / Safari 上用 BlastDoor / Enhanced Security Extensions，把攻击者可控的复杂数据（图片、消息、网页内容）放进几乎无权限的隔离进程里解析，高权限进程只接收简单的、可校验的类型。即使隔离进程被打穿，攻击者也拿不到消息数据库、Cookie 或内核访问。
-2. **出站数据重新校验**：Apple 明确说"要假设 containment 进程可能已经被攻陷，它返回的东西不可信"。所以 Messages 在显示图片前，会用极小的校验器重新确认"这确实是我期望格式的图片"。
-3. **锁定模式削减攻击面**：Lockdown Mode 在 WebKit 上直接剥掉 JIT，避免 W^X 违规带来的 JIT 内存破坏面，代价是一点渲染开销。
+## 3. 隐私红线 / Privacy
 
-对应到 Fenestra：
+以下能力默认拒绝，须用户**逐项、显式**确认，确认不连带：
 
-| Apple | Fenestra |
-| --- | --- |
-| BlastDoor 隔离进程 | `IsolationLevel::BlastDoor` 策略 + 平台后端插件负责真实进程 |
-| 复杂数据在最低权限处 detonate | `SandboxPolicy::detonate()` |
-| 返回数据仍不可信 | `Untrusted<T>`，`revalidate()` 前拿不到裸值 |
-| Enhanced Security Extension | `sandbox-policy` 是一个可替换插件 kind |
-| Lockdown Mode 禁 JIT | `deny_jit_in_lockdown` + `harden()` |
-| App Sandbox 默认拒绝 | `default_deny` + `Capability` 三重闸门 |
+`ClipboardRead` · `ProfileRead` · `CameraDevice` · `LocationDevice` · `Telemetry`
 
-**没有被照搬的**：Apple 的做法依赖 Darwin 内核、代码签名、AMFI/CoreTrust 与硬件级内存完整性（MIE / PAC），这些不是浏览器壳能提供的。Fenestra 能做的是把"默认拒绝 + 最小权限 + 出站重校验"做成跨平台的公共契约，把 OS 特定实现交给平台插件。
+- 不默认收集或上传浏览历史、页面内容、剪贴板、位置、凭据、设备指纹；
+- 不植入未经用户明示同意且可随时关闭的遥测；
+- 纯本地、零运营成本、不收任何用户数据、不做账号 / 云同步。
 
----
+层 B（[LICENSE-COMMERCIAL](./LICENSE-COMMERCIAL)）的不可退化条款同样锁死这些红线，付钱也不得弱化；层 A [LICENSE](./LICENSE) 第 5 条把「默认拒绝 / 沙箱隔离 / 隐私红线 / 出站重校验 / 可逆登记」列为永久开源不变量。
 
-## 2. 威胁模型
+## 4. 沙箱与出站重校验
 
-| 攻击者 | 能力 | 我们要挡住什么 | 当前手段 |
-| --- | --- | --- | --- |
-| 恶意网页 | 控制页面内容与脚本 | 拿到本地文件、剪贴板、位置、浏览历史 | 默认拒绝的能力仲裁；`origin` 声明 |
-| 恶意／被投毒的插件 | 声明并请求超出需要的能力 | 权限提升、静默驻留、数据外传 | 最小权限交集、隐私红线显式确认、可逆卸载 |
-| 恶意扩展（三家来源） | 利用方言差异绕过限制 | 用 `webRequest` 之类差异做隐蔽拦截 | 归一器显式 warnings；`net.intercept` 属安全红线 |
-| 被攻陷的渲染／解析单元 | 完全控制该单元 | 借返回值污染高权限侧 | `Untrusted<T>` + `revalidate()` |
-| 派生版本维护者 | 能改全部代码 | 弱化沙盒、加遥测、锁插件、故意变慢 | LICENSE 第 6 条 + `weakened()` 可检测 + 商标条款 |
-| 供应链 | 往依赖里塞后门 | 内核被间接污染 | 零第三方依赖 + CI 守门 |
+隔离单元（网页 / 插件输出）产出的数据被包成 `Untrusted<T>`：该类型**不实现 `Deref` / `AsRef`，不提供 `into_inner`**，外部无法绕过校验取值。离开隔离边界前必须调用 `revalidate(validator)`，校验器通过内容策略（scheme 白名单、结构完整性、长度上限、是否夹带未声明字段等）后才返回 `Trusted<T>`；校验失败，值随对象一同丢弃。
 
-**明确不在范围内**：Stage 0 不防物理接触设备、不防已被攻陷的操作系统、不防用户主动安装并全权授权的插件。
+`#[forbid(unsafe_code)]` 在 [crates/gate/src/lib.rs](./crates/gate/src/lib.rs) 顶层声明。
 
----
+## 5. 权限清单与 Tauri PCS
 
-## 3. 安全红线与隐私红线
+[apps/shell/src-tauri/capabilities/default.json](./apps/shell/src-tauri/capabilities/default.json) 只授予 `core:default`（主窗口与 WebView 基础权限）；核心能力一律经 Rust 闸门按默认拒绝裁决。`gate_check` IPC 命令当前是**默认拒绝示意**，生产版改为调用 `Gate::check`。
 
-`Capability::is_security_sensitive()`（`engine.swap` / `network.swap` / `sandbox.read` / `net.intercept`）：锁定模式下直接拒绝。理由很直接——"换引擎"和"改沙盒策略"正是攻击者拿到执行权后最想做的两件事，锁定模式就该把它们冻住。
+## 6. 当前尚未做完（如实）
 
-`Capability::is_privacy_sensitive()`（`telemetry` / `profile.read` / `clipboard.read` / `device.camera` / `device.location`）：未经用户**逐项、显式、可撤销**确认，永不放行；确认状态不缓存到插件侧。
+- Rust 闸门 ↔ TS 插件运行时 ↔ Tauri IPC ↔ Svelte UI 的端到端对接未打通；
+- 敏感操作的**清晰授权弹窗**未实现（插件管理页权限数据当前为本地镜像）；
+- 真实网页渲染由系统 WebView 承载，隔离边界的最终形态待端到端集成后确定；
+- 沙箱隔离的进程 / 站点级落地依赖 Tauri 外壳集成，本地未编译验证。
 
-`SandboxPolicy::weakened()` 检测 `default_deny` 被关、出站重校验被关、隔离级别被降到 `None`。这是给 CI 与派生版本审计用的，也对应 LICENSE 第 6.2 条。
+各包独立测试通过不等于端到端安全闭环，见 [README.md](./README.md) 状态表。
 
----
+## 7. 报告漏洞
 
-## 4. 报告漏洞
+发现漏洞请通过仓库 issue 或私信联系 `codecloud-dev`；未修复的严重漏洞请勿公开开 issue。我们遵循诚实原则：相关测试 / CI 未真正通过前，不会声称修复已验证。
 
-- 优先通过 GitHub 的 **Security → Report a vulnerability**（私有漏洞报告）提交，避免公开 issue 泄露细节。
-- 如果该入口尚未开启，请先开一个**不含任何技术细节**的 issue 索要联系方式，或在仓库 Discussion 里留言；不要在公开场合贴 PoC。
-- 请包含：影响版本、复现步骤、影响的能力边界、建议修法。
-- 我们承诺不因善意的安全研究追究 LICENSE 第 11 条责任；第 3 条本来就允许安全审计。
-
-修复节奏：确认后先出最小补丁与回归测试，再发布；CHANGELOG 记录而不掩盖。
-
----
-
-## 5. 安全相关的验收清单（每阶段都要重跑）
-
-- [x] `cargo test --all-targets` 全绿
-- [x] `cargo clippy --all-targets -- -D warnings` 干净
-- [x] 零第三方依赖守门
-- [x] 未授予能力一律 `Deny`
-- [x] 隐私红线未经确认一律 `Deny`
-- [x] 锁定模式冻结安全红线
-- [x] 卸载后服务／订阅／能力全部清零
-- [ ] 平台后端插件真实进程隔离（Stage 2）
-- [ ] 插件签名与来源验证（Stage 2）
-- [ ] 出站流量可观测与阻断（Stage 2）
-- [ ] 第三方安全审计（Stage 3）
+原则见 [PRINCIPLES.md](./PRINCIPLES.md)，架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)。

@@ -1,8 +1,0 @@
-{
-  "manifest_version": 3,
-  "name": "Reader",
-  "version": "2.1",
-  "permissions": ["storage", "activeTab", "declarativeNetRequest", "telemetryProbe"],
-  "host_permissions": ["https://example.com/*"],
-  "background": { "service_worker": "background.js" }
-}

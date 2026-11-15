@@ -1,0 +1,27 @@
+{
+  "name": "@fenestra/core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Fenestra 插件运行时：基于 Cordis 4 的可逆插件生命周期（加载/启用/禁用/卸载，逆序回滚无残留，热装不重启）",
+  "license": "LicenseRef-Fenestra-Open-1.0",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "cordis": "4.0.0-rc.13"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "@types/node": "^22"
+  }
+}

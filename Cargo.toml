@@ -1,25 +1,21 @@
-[package]
-name = "fenestra"
+# Fenestra Cargo workspace（层 A）
+# 纯 Rust 权限闸门在此 workspace 内；Tauri 外壳 src-tauri 是独立 workspace，
+# 通过 exclude 隔离，避免 gate 的 cargo test 触碰 webkit2gtk 系统依赖。
+[workspace]
+resolver = "2"
+members = ["crates/gate"]
+exclude = ["apps/shell/src-tauri"]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.70"
-description = "Fenestra — a browser that is only a shell; everything else is a plugin"
+rust-version = "1.77.2"
+license = "LicenseRef-Fenestra-Open-1.0"
 repository = "https://github.com/codecloud-dev/Fenestra"
-homepage = "https://github.com/codecloud-dev/Fenestra"
-readme = "README.md"
-license-file = "LICENSE"
-keywords = ["browser", "plugin", "shell", "sandbox", "extensions"]
-categories = ["command-line-utilities"]
+authors = ["codecloud-dev"]
 
-# 内核刻意零第三方依赖。
-# 渲染引擎、网络栈、界面、存储、扩展运行时全部由插件提供，
-# 因此这里不应该出现任何实现性依赖。
-[dependencies]
-
-[lib]
-name = "fenestra"
-path = "src/lib.rs"
-
-[[bin]]
-name = "fenestra"
-path = "src/main.rs"
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

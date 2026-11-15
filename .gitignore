@@ -1,9 +1,33 @@
-/target
+# ---- Node / pnpm ----
+node_modules/
+**/node_modules/
+.pnpm-store/
+dist/
+**/dist/
+.svelte-kit/
+**/.svelte-kit/
+*.tsbuildinfo
+*.local
+pnpm-debug.log*
+npm-debug.log*
+
+# ---- Rust / Cargo ----
+target/
+**/target/
 **/*.rs.bk
+
+# ---- Tauri ----
+apps/shell/src-tauri/gen/
+apps/shell/src-tauri/target/
+
+# ---- OS / editor ----
 .DS_Store
 Thumbs.db
-*.swp
-*.swo
 .idea/
-.vscode/
-*.log
+.vscode/*
+!.vscode/extensions.json
+
+# ---- env ----
+.env
+.env.*
+!.env.example

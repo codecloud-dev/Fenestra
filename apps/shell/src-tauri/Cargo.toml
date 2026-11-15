@@ -1,0 +1,26 @@
+[package]
+name = "fenestra-shell"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77.2"
+description = "Fenestra Tauri 2 外壳：渲染引擎抽象为可替换接口层"
+license = "LicenseRef-Fenestra-Open-1.0"
+repository = "https://github.com/codecloud-dev/Fenestra"
+
+# 独立 workspace：与根 Cargo workspace 的纯 Rust 闸门解耦，
+# 让 gate 的 cargo test 不必依赖 webkit2gtk 等系统库。
+[workspace]
+
+[lib]
+name = "fenestra_shell_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fenestra-shell"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
