@@ -1,3 +1,7 @@
 packages:
   - "packages/*"
   - "packages/plugins/*"
+
+# pnpm 10+ 起从 package.json 迁来
+onlyBuiltDependencies:
+  - esbuild

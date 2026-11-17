@@ -23,10 +23,5 @@
     "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^22",
     "typescript": "^5.9.3"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }
