@@ -13,7 +13,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 /// Fenestra 核心能力。隐私红线能力须经用户逐项显式确认。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -22,6 +22,7 @@ pub enum Capability {
     NetOutbound,
     StorageWrite,
     FileRead,
+    UiNewTab,
     // ---- 隐私红线 ----
     ClipboardRead,
     ProfileRead,
@@ -41,6 +42,26 @@ impl Capability {
                 | Capability::LocationDevice
                 | Capability::Telemetry
         )
+    }
+
+    /// 把插件 `meta.permissions` 里声明的权限字符串解析为闸门能力。
+    ///
+    /// 这是 TS 侧权限字符串与 Rust 闸门之间的**唯一**映射入口；未知字符串
+    /// 返回 `None`，由 `Gate::check_permission` 按默认拒绝处理，绝不猜测放行。
+    pub fn from_permission(permission: &str) -> Option<Capability> {
+        match permission.trim() {
+            "ui.newtab" => Some(Capability::UiNewTab),
+            "net.dns" | "dns" | "dns.resolve" => Some(Capability::DnsResolve),
+            "net.preconnect" | "preconnect" | "net.outbound" => Some(Capability::NetOutbound),
+            "storage.write" => Some(Capability::StorageWrite),
+            "file.read" => Some(Capability::FileRead),
+            "clipboard.read" => Some(Capability::ClipboardRead),
+            "profile.read" => Some(Capability::ProfileRead),
+            "camera" | "camera.device" => Some(Capability::CameraDevice),
+            "location" | "location.device" => Some(Capability::LocationDevice),
+            "telemetry" => Some(Capability::Telemetry),
+            _ => None,
+        }
     }
 }
 
@@ -66,6 +87,25 @@ impl Decision {
     pub fn is_allowed(self) -> bool {
         matches!(self, Decision::Allow)
     }
+}
+
+// ---------------------------------------------------------------------------
+// 失败可审计：有界的裁决记录
+// ---------------------------------------------------------------------------
+
+/// 审计日志容量上限。闸门内嵌在长期运行的浏览器外壳里，审计记录必须有界，
+/// 否则反复的拒绝尝试会让内存无界增长（这本身就是一种 DoS 面）。
+pub const AUDIT_CAPACITY: usize = 256;
+
+/// 一条可审计的裁决记录：谁、要什么能力、结果如何（含拒绝原因）。
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DecisionRecord {
+    pub plugin: String,
+    /// 解析出的能力；权限字符串无法解析时为 `None`（默认拒绝）。
+    pub capability: Option<Capability>,
+    /// 原始权限字符串（仅 `check_permission` 路径保留）。
+    pub permission: Option<String>,
+    pub decision: Decision,
 }
 
 // ---------------------------------------------------------------------------
@@ -222,6 +262,8 @@ pub struct Gate {
     declared: BTreeMap<String, PermissionSet>,
     confirmed: BTreeMap<String, PermissionSet>,
     registry: RevertibleRegistry<Grant>,
+    /// 最近 `AUDIT_CAPACITY` 条裁决记录（含拒绝原因），供「失败可审计」核对。
+    audit: VecDeque<DecisionRecord>,
 }
 
 impl Gate {
@@ -232,6 +274,7 @@ impl Gate {
             declared: BTreeMap::new(),
             confirmed: BTreeMap::new(),
             registry: RevertibleRegistry::new(),
+            audit: VecDeque::new(),
         }
     }
 
@@ -301,6 +344,55 @@ impl Gate {
             return Decision::Deny(DenyReason::ConsentRequired);
         }
         Decision::Allow
+    }
+
+    /// 可审计的能力检查：在 [`Gate::check`] 的基础上记一条裁决（含拒绝原因）。
+    pub fn check_audited(&mut self, plugin: &str, cap: Capability) -> Decision {
+        self.record(plugin, Some(cap), None)
+    }
+
+    /// 权限字符串入口：先经 [`Capability::from_permission`] 解析，再做可审计检查。
+    /// 未知权限字符串没有对应能力，按默认拒绝处理并同样记入审计。
+    pub fn check_permission(&mut self, plugin: &str, permission: &str) -> Decision {
+        let cap = Capability::from_permission(permission);
+        self.record(plugin, cap, Some(permission.to_string()))
+    }
+
+    fn record(
+        &mut self,
+        plugin: &str,
+        cap: Option<Capability>,
+        permission: Option<String>,
+    ) -> Decision {
+        let decision = match cap {
+            Some(c) => self.check(plugin, c),
+            None => Decision::Deny(DenyReason::NotDeclared),
+        };
+        if self.audit.len() == AUDIT_CAPACITY {
+            self.audit.pop_front();
+        }
+        self.audit.push_back(DecisionRecord {
+            plugin: plugin.to_string(),
+            capability: cap,
+            permission,
+            decision,
+        });
+        decision
+    }
+
+    /// 最近的裁决记录（最旧在前，最多 [`AUDIT_CAPACITY`] 条）。
+    pub fn audit_log(&self) -> &VecDeque<DecisionRecord> {
+        &self.audit
+    }
+
+    /// 只看被拒绝的裁决，供「失败可审计」核对。
+    pub fn denials(&self) -> impl Iterator<Item = &DecisionRecord> {
+        self.audit.iter().filter(|r| !r.decision.is_allowed())
+    }
+
+    /// 清空审计日志。
+    pub fn clear_audit(&mut self) {
+        self.audit.clear()
     }
 
     /// 卸载插件：逆序回滚该插件全部登记，清除声明与确认，无残留。
@@ -619,5 +711,142 @@ mod tests {
         );
         assert_eq!(gate.check("b", Capability::DnsResolve), Decision::Allow);
         assert_eq!(gate.registrations(), 1);
+    }
+
+    // --- 权限字符串映射 / 可审计检查 ---
+
+    #[test]
+    fn permission_strings_map_to_capabilities() {
+        assert_eq!(
+            Capability::from_permission("ui.newtab"),
+            Some(Capability::UiNewTab)
+        );
+        assert_eq!(
+            Capability::from_permission("net.dns"),
+            Some(Capability::DnsResolve)
+        );
+        assert_eq!(
+            Capability::from_permission("net.preconnect"),
+            Some(Capability::NetOutbound)
+        );
+        assert_eq!(
+            Capability::from_permission("clipboard.read"),
+            Some(Capability::ClipboardRead)
+        );
+        // 空白容错 + 未知字符串默认拒绝（不猜测放行）。
+        assert_eq!(
+            Capability::from_permission("  net.dns  "),
+            Some(Capability::DnsResolve)
+        );
+        assert_eq!(Capability::from_permission("net.kernel"), None);
+        assert_eq!(Capability::from_permission(""), None);
+    }
+
+    #[test]
+    fn check_permission_matches_check_and_records_audit() {
+        let mut gate = Gate::new();
+        gate.set_policy(policy(&[Capability::DnsResolve]));
+        // 两个能力都声明，但策略只放开 DnsResolve → net.outbound 命中 PolicyForbidden。
+        gate.declare(
+            "accel",
+            caps(&[Capability::DnsResolve, Capability::NetOutbound]),
+        );
+
+        assert_eq!(
+            gate.check_permission("accel", "net.dns"),
+            gate.check("accel", Capability::DnsResolve)
+        );
+        assert!(gate.check_permission("accel", "net.dns").is_allowed());
+        assert_eq!(
+            gate.check_permission("accel", "net.outbound"),
+            Decision::Deny(DenyReason::PolicyForbidden)
+        );
+        assert_eq!(gate.audit_log().len(), 3);
+
+        let last = gate.audit_log().back().unwrap();
+        assert_eq!(last.plugin, "accel");
+        assert_eq!(last.permission.as_deref(), Some("net.outbound"));
+        assert_eq!(last.capability, Some(Capability::NetOutbound));
+        assert_eq!(last.decision, Decision::Deny(DenyReason::PolicyForbidden));
+    }
+
+    #[test]
+    fn unknown_permission_is_default_denied_and_audited() {
+        let mut gate = Gate::new();
+        gate.set_policy(policy(&[Capability::DnsResolve]));
+        gate.declare("accel", caps(&[Capability::DnsResolve]));
+        assert_eq!(
+            gate.check_permission("accel", "net.kernel"),
+            Decision::Deny(DenyReason::NotDeclared)
+        );
+        let last = gate.audit_log().back().unwrap();
+        assert_eq!(last.capability, None);
+        assert_eq!(last.permission.as_deref(), Some("net.kernel"));
+        assert_eq!(last.decision, Decision::Deny(DenyReason::NotDeclared));
+    }
+
+    #[test]
+    fn denials_filters_only_rejected_decisions() {
+        let mut gate = Gate::new();
+        gate.set_policy(policy(&[Capability::DnsResolve]));
+        gate.declare("accel", caps(&[Capability::DnsResolve]));
+        gate.check_audited("accel", Capability::DnsResolve); // allow
+        gate.check_audited("stranger", Capability::DnsResolve); // deny
+        gate.check_audited("accel", Capability::ClipboardRead); // deny
+        let denied: Vec<&DecisionRecord> = gate.denials().collect();
+        assert_eq!(denied.len(), 2);
+        assert_eq!(denied[0].plugin, "stranger");
+        assert_eq!(denied[1].plugin, "accel");
+        assert_eq!(denied[0].decision, Decision::Deny(DenyReason::NotDeclared));
+        assert_eq!(denied[1].decision, Decision::Deny(DenyReason::NotDeclared));
+    }
+
+    #[test]
+    fn audit_log_is_bounded_for_long_running_process() {
+        let mut gate = Gate::new();
+        gate.set_policy(policy(&[Capability::DnsResolve]));
+        gate.declare("accel", caps(&[Capability::DnsResolve]));
+        for _ in 0..(AUDIT_CAPACITY + 10) {
+            gate.check_audited("stranger", Capability::DnsResolve);
+        }
+        assert_eq!(gate.audit_log().len(), AUDIT_CAPACITY);
+        // 全部同源拒绝，最旧与最新都仍是 stranger 的拒绝记录。
+        assert_eq!(gate.audit_log().front().unwrap().plugin, "stranger");
+        assert_eq!(gate.audit_log().back().unwrap().plugin, "stranger");
+        gate.clear_audit();
+        assert!(gate.audit_log().is_empty());
+    }
+
+    #[test]
+    fn builtin_plugin_gate_checks_through_permission_strings() {
+        // 外壳用同一套 API 构造：net.dns / net.preconnect 给 accelerate，
+        // ui.newtab 给 newtab；其余默认拒绝。
+        let mut gate = Gate::new();
+        gate.set_policy(policy(&[
+            Capability::UiNewTab,
+            Capability::DnsResolve,
+            Capability::NetOutbound,
+        ]));
+        gate.declare("newtab", caps(&[Capability::UiNewTab]));
+        gate.declare(
+            "accelerate",
+            caps(&[Capability::DnsResolve, Capability::NetOutbound]),
+        );
+        assert!(gate.check_permission("newtab", "ui.newtab").is_allowed());
+        assert!(gate
+            .check_permission("accelerate", "net.dns")
+            .is_allowed());
+        assert!(gate
+            .check_permission("accelerate", "net.preconnect")
+            .is_allowed());
+        // 跨插件越权：声明里没有，必须拒绝。
+        assert_eq!(
+            gate.check_permission("accelerate", "ui.newtab"),
+            Decision::Deny(DenyReason::NotDeclared)
+        );
+        assert_eq!(
+            gate.check_permission("stranger", "net.dns"),
+            Decision::Deny(DenyReason::NotDeclared)
+        );
     }
 }

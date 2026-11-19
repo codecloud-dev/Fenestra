@@ -756,9 +756,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fenestra-gate"
+version = "0.1.0"
+
+[[package]]
 name = "fenestra-shell"
 version = "0.1.0"
 dependencies = [
+ "fenestra-gate",
  "tauri",
  "tauri-build",
 ]

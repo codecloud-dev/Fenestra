@@ -67,6 +67,8 @@ export class PluginRuntime {
   private readonly defs = new Map<string, PluginDefinition>()
   private readonly fibers = new Map<string, Fiber>()
   private readonly records = new Map<string, PluginRecord>()
+  /** 正在启用中的插件 → 其 enable Promise，用于并发 enable 去重。 */
+  private readonly enabling = new Map<string, Promise<PluginRecord>>()
 
   constructor(ctx: Context = new Context()) {
     this.ctx = ctx
@@ -86,15 +88,33 @@ export class PluginRuntime {
 
   /**
    * 启用插件：在同一 Context 上挂一根新 Fiber 并等待生效。
-   * 幂等；重复 enable 不会重复注册 effect。
+   * 幂等；重复 enable（含并发调用）不会重复注册 effect。
    */
   async enable(id: string): Promise<PluginRecord> {
-    const def = this.defs.get(id)
-    if (!def) {
-      throw new Error(`plugin not loaded: ${id}`)
+    // 同一个 id 的并发 enable 共享第一次的结果，避免重复挂 Fiber。
+    const inflight = this.enabling.get(id)
+    if (inflight) {
+      return inflight
     }
     if (this.fibers.has(id)) {
       return this.records.get(id)!
+    }
+    const task = this.doEnable(id)
+    this.enabling.set(id, task)
+    try {
+      return await task
+    } finally {
+      // 只清自己那一轮，避免误删后续重入新建的 task。
+      if (this.enabling.get(id) === task) {
+        this.enabling.delete(id)
+      }
+    }
+  }
+
+  private async doEnable(id: string): Promise<PluginRecord> {
+    const def = this.defs.get(id)
+    if (!def) {
+      throw new Error(`plugin not loaded: ${id}`)
     }
     const component: Component.Function = (childCtx) => {
       const api = this.createApi(childCtx, id, def.meta)

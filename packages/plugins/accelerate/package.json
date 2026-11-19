@@ -1,6 +1,6 @@
 {
   "name": "@fenestra/plugin-accelerate",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "第一个加速插件：基础 DNS 缓存 + 鼠标悬停预连接（不碰系统内核 / VPN / eBPF / BBR）",
   "license": "LicenseRef-Fenestra-Open-1.0",

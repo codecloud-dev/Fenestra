@@ -1,6 +1,6 @@
 [package]
 name = "fenestra-shell"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.77.2"
 description = "Fenestra Tauri 2 外壳：渲染引擎抽象为可替换接口层"
@@ -27,3 +27,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+# gate_check 走真正的 fenestra-gate（默认拒绝 / 声明 ∩ 策略 / 可审计裁决），
+# 不再是「硬编码允许列表」占位。path 依赖跨 workspace 不影响根 workspace 的独立测试。
+fenestra-gate = { path = "../../../crates/gate" }

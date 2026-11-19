@@ -197,6 +197,25 @@ test('重复 load 报错，重复 enable 幂等（effect 不重复注册）', as
   assert.equal(runtime.get('idem')?.state, 'enabled')
 })
 
+// 8b. 并发 enable 幂等（真实 bug 回归）：同一 id 同时两次 enable 只挂一次 Fiber。
+test('并发 enable 幂等：apply 只执行一次，effect 不重复注册', async () => {
+  const runtime = new PluginRuntime()
+  let setups = 0
+  const plugin = definePlugin({
+    meta: { name: 'race' },
+    apply: (_c, api) => api.effect('e', () => { setups += 1 }, () => {}),
+  })
+  runtime.load('race', plugin)
+  // 不 await 第一次，制造两次 enable 在 doEnable 完成前的并发重叠。
+  const [a, b] = await Promise.all([runtime.enable('race'), runtime.enable('race')])
+  assert.equal(a, b, '两次并发 enable 返回同一条记录')
+  assert.equal(setups, 1, 'apply 只执行一次')
+  assert.equal(runtime.auditLog.filter((e) => e === 'setup:race:e').length, 1)
+  assert.equal(runtime.auditLog.filter((e) => e === 'enable:race').length, 1)
+  await runtime.disable('race')
+  assert.equal(runtime.auditLog.filter((e) => e === 'cleanup:race:e').length, 1)
+})
+
 // 9. 审计日志完整生命周期顺序
 test('auditLog 记录 load/setup/enable/cleanup/disable/unload 完整顺序', async () => {
   const runtime = new PluginRuntime()

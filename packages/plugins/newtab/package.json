@@ -1,6 +1,6 @@
 {
   "name": "@fenestra/plugin-newtab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Fenestra 官方默认新标签页插件",
   "license": "LicenseRef-Fenestra-Open-1.0",

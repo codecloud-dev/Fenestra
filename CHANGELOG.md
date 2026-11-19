@@ -2,6 +2,27 @@
 
 > 格式：按版本倒序。所有「通过」均来自真实执行，不写未验证的性能数字、不承诺工期。
 
+## 0.1.1 · 闸门真接入 + 可审计 + 并发幂等（2026-11-19）
+
+本轮公开仓库深度升级：不靠 issue 清单，真读代码发现「Rust 闸门与 Tauri 外壳之间仍是硬编码允许列表占位」「插件 enable 并发可重复挂载」「没有可观测的拒绝原因」，逐项修掉并补回归。工作区版本统一升到 `0.1.1`（根 / gate / core / ui / 三个插件 / Tauri 外壳 / tauri.conf）。
+
+### 新增 / 修复
+
+- **Tauri `gate_check` 不再用硬编码允许列表占位**，改为进程内唯一 `OnceLock<Mutex<Gate>>`，真正调用 `fenestra_gate::Gate::check_permission` 裁决；策略上限只放开 `ui.newtab` / `net.dns` / `net.preconnect`，跨插件越权一律默认拒绝。
+- **失败可审计**：`Capability::from_permission` 成为 TS 权限字符串与 Rust 能力的唯一映射入口，未知字符串默认拒绝；`check_audited` / `check_permission` 记录有界裁决日志（`AUDIT_CAPACITY=256`，防长期运行下拒绝探测把内存打爆），新增 `gate_audit` IPC 暴露最近拒绝原因。
+- **插件运行时并发 enable 幂等（真 bug）**：此前只检查 `fibers.has(id)`，两次并发 `enable` 可能在第一次挂 Fiber 前同时通过检查，导致 `apply` 执行两次、effect 重复注册。新增 `enabling` in-flight map 共享第一次 Promise，并在 `finally` 里只清自己那一轮，防止误删后续重入任务。
+- **真实微基准**：新增 `crates/gate/examples/bench.rs`（零第三方依赖）。本机 200000 次实测（随机器负载波动）：纯 `check` **5.5 ns/op**、带解析与有界审计的 `check_permission` **19.6 ns/op**、`effective` 含分配 **24.7 ns/op**。
+
+### 验证
+
+- `pnpm install --frozen-lockfile` EXIT=0。
+- `cargo test -p fenestra-gate` EXIT=0：**24 单元 + 0 doc** 全过（新增 6 例覆盖权限字符串映射、默认拒绝、审计有界、跨插件越权）。
+- `cargo clippy -p fenestra-gate --all-targets -- -D warnings` EXIT=0。
+- `pnpm --filter @fenestra/core typecheck` EXIT=0；`pnpm --filter @fenestra/core test` EXIT=0：**12/12**（新增并发 enable 回归）。
+- `pnpm run plugins:typecheck` EXIT=0（3/3 插件）；`pnpm --filter @fenestra/ui build` EXIT=0。
+- `bash scripts/check-licenses.sh` EXIT=0；`python3 scripts/check-docs.py` EXIT=0（12 份根 Markdown 链接 / 命名 / 徽章 / 章节齐备）。
+- Tauri 外壳依赖 `libwebkit2gtk-4.1-dev`，本地沙箱不具备该 GUI 栈，按既有分工由 GitHub Actions `shell` job 真编译验证；发布后盯 CI 到绿。
+
 ## 0.1.0 · Stage 1 推翻重写（2026-11-15）
 
 按方向定稿 §9「开工」授权，从 `9ee4bd4` 之后重写主干。

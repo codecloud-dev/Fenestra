@@ -1,6 +1,6 @@
 {
   "name": "@fenestra/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Fenestra 插件运行时：基于 Cordis 4 的可逆插件生命周期（加载/启用/禁用/卸载，逆序回滚无残留，热装不重启）",
   "license": "LicenseRef-Fenestra-Open-1.0",

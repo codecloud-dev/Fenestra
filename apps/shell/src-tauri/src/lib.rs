@@ -5,9 +5,14 @@
 //!   - Servo 降为 Stage 1 的「第一个可替换引擎插件」，实现同一 trait 后在注册表中接入；
 //!   - 引擎是「注册」而非「编译期绑定」，运行时保留替换点。
 //!
-//! 安全说明：`gate_check` 是「Rust 闸门 ↔ 前端」IPC 的对接示意，遵循默认拒绝。
-//! 真正的默认拒绝、最小权限交集、隐私逐项确认、`Untrusted<T>` 出站重校验与
-//! 可逆登记，由 `crates/gate` 实现（纯 Rust、零系统依赖，可独立 `cargo test`）。
+//! 安全说明：`gate_check` 不再用硬编码允许列表占位，而是真正调用 `fenestra_gate::Gate`
+//! 的 `check_permission`：默认拒绝、声明 ∩ 策略、隐私逐项确认全部由同一套闸门裁决，
+//! 且每次裁决（含拒绝原因）都进入有界审计日志，可由 `gate_audit` IPC 读取。
+//! 闸门的 `Untrusted<T>` 出站重校验与可逆登记同样来自 `crates/gate`
+//! （纯 Rust、零系统依赖，可独立 `cargo test`）。
+
+use fenestra_gate::{Capability, Gate};
+use std::sync::{Mutex, OnceLock};
 
 /// 可替换渲染引擎接口层。新增引擎（如 Servo）只需实现此 trait 并注册，
 /// 外壳与插件层不感知具体引擎。
@@ -71,16 +76,57 @@ impl Default for EngineRegistry {
     }
 }
 
-/// 默认拒绝示例：未显式声明的 (插件, 能力) 一律返回 `false`。
-/// 生产版把这里替换为对 `fenestra_gate::Gate::check` 的调用。
+/// 外壳内唯一的闸门实例：进程内长期存活，策略 / 声明只在此初始化一次。
+/// 用 `OnceLock` 而非 `static Mutex::new(...)`，因为初始化需要运行 `declare/set_policy`。
+static GATE: OnceLock<Mutex<Gate>> = OnceLock::new();
+
+fn gate() -> &'static Mutex<Gate> {
+    GATE.get_or_init(|| {
+        let mut g = Gate::new();
+        // 策略上限只放开三个内置权限；其余能力即使被声明也不放行。
+        g.set_policy(
+            [
+                Capability::UiNewTab,
+                Capability::DnsResolve,
+                Capability::NetOutbound,
+            ]
+            .into_iter()
+            .collect(),
+        );
+        g.declare("newtab", [Capability::UiNewTab].into_iter().collect());
+        g.declare(
+            "accelerate",
+            [Capability::DnsResolve, Capability::NetOutbound]
+                .into_iter()
+                .collect(),
+        );
+        Mutex::new(g)
+    })
+}
+
+/// 统一权限检查 IPC：把前端传来的 (插件, 权限字符串) 交给真正的闸门裁决。
+/// 未声明 / 不在策略上限 / 未逐项确认的，一律 `false`；每次裁决都记入审计。
 #[tauri::command]
 fn gate_check(plugin: String, capability: String) -> bool {
-    matches!(
-        (plugin.as_str(), capability.as_str()),
-        ("newtab", "ui.newtab")
-            | ("accelerate", "net.dns")
-            | ("accelerate", "net.preconnect")
-    )
+    let mut g = gate().lock().unwrap_or_else(|e| e.into_inner());
+    g.check_permission(&plugin, &capability).is_allowed()
+}
+
+/// 失败可审计 IPC：返回最近的被拒绝裁决（插件 / 权限字符串 / 拒绝原因）。
+/// 审计日志有界（见 `AUDIT_CAPACITY`），长期运行不会无界增长。
+#[tauri::command]
+fn gate_audit() -> Vec<String> {
+    let g = gate().lock().unwrap_or_else(|e| e.into_inner());
+    g.denials()
+        .map(|r| {
+            format!(
+                "{}:{} -> {:?}",
+                r.plugin,
+                r.permission.as_deref().unwrap_or("<unknown>"),
+                r.decision
+            )
+        })
+        .collect()
 }
 
 /// 返回当前注册的渲染引擎名（供前端 / 调试确认引擎替换是否生效）。
@@ -98,7 +144,7 @@ fn engine_name() -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![gate_check, engine_name])
+        .invoke_handler(tauri::generate_handler![gate_check, gate_audit, engine_name])
         .run(tauri::generate_context!())
         .expect("error while running Fenestra shell");
 }
