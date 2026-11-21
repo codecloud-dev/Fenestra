@@ -1,7 +1,6 @@
 name: Android APK
 
-# 在 GitHub Actions 的 ubuntu runner 上「真装 SDK、真编译」出可安装的 APK。
-# 本地沙箱曾缺 ANDROID_HOME / SDK / NDK，故把可复现的构建步骤固化在这里。
+# 在 CI runner 上装 SDK、编译可安装的 APK；构建步骤固化以保证可复现。
 on:
   workflow_dispatch:
   push:
@@ -12,9 +11,10 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/android.yml'
+    tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: android-${{ github.ref }}
@@ -115,3 +115,20 @@ jobs:
             fenestra.apk
             fenestra.apk.sha256
           if-no-files-found: error
+
+      # 语义化 tag 推送时，把同一份审查包上传到对应 Release。
+      - name: 上传 APK 到版本 Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Fenestra $TAG" \
+              --notes "审查包：debug 构建，arm64-v8a，附 sha256。" || exit 1
+          fi
+          for f in fenestra.apk fenestra.apk.sha256; do
+            gh release delete-asset "$TAG" "$f" --yes 2>/dev/null || true
+            gh release upload "$TAG" "$f" --clobber
+          done
+          gh release view "$TAG" --json assets --jq '.assets[] | {name, size, state}'
