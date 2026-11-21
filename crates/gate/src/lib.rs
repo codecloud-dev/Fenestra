@@ -67,6 +67,123 @@ impl Capability {
 
 pub type PermissionSet = BTreeSet<Capability>;
 
+// ---------------------------------------------------------------------------
+// 外部链接出站校验（外壳「用系统浏览器打开」入口）
+// ---------------------------------------------------------------------------
+
+/// 外部链接被拒绝的原因。前端可据此给出明确提示，而不是只显示「打不开」。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExternalUrlError {
+    Empty,
+    TooLong,
+    UnsupportedScheme,
+    MissingHost,
+    CredentialsNotAllowed,
+    InvalidPort,
+    LocalTarget,
+}
+
+impl ExternalUrlError {
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::Empty => "地址为空",
+            Self::TooLong => "地址过长（上限 2048 字符）",
+            Self::UnsupportedScheme => "只允许 http:// 或 https:// 链接",
+            Self::MissingHost => "缺少主机名",
+            Self::CredentialsNotAllowed => "外链不允许携带用户名密码",
+            Self::InvalidPort => "端口号非法",
+            Self::LocalTarget => "不允许用系统浏览器打开本机 / 内网地址",
+        }
+    }
+}
+
+fn parse_ipv4(host: &str) -> Option<[u8; 4]> {
+    let parts: Vec<&str> = host.split('.').collect();
+    if parts.len() != 4 {
+        return None;
+    }
+    let mut out = [0u8; 4];
+    for (i, p) in parts.iter().enumerate() {
+        if p.is_empty() || p.len() > 3 || !p.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        out[i] = p.parse().ok()?;
+    }
+    Some(out)
+}
+
+fn is_local_ipv4(ip: [u8; 4]) -> bool {
+    let [a, b, _, _] = ip;
+    a == 0
+        || a == 10
+        || a == 127
+        || (a == 100 && (64..=127).contains(&b))
+        || (a == 169 && b == 254)
+        || (a == 172 && (16..=31).contains(&b))
+        || (a == 192 && (b == 0 || b == 168))
+        || (a == 198 && (b == 18 || b == 19))
+        || a >= 224
+}
+
+/// 校验「交给系统浏览器打开」的 URL。只接收 http(s) 公网链接，拒绝把
+/// `file://` / `javascript:` / 本机与内网地址交给外部程序；返回规范化后的
+/// 原串（仅去首尾空白），不改写用户输入的路径与查询。
+pub fn validate_external_http_url(raw: &str) -> Result<String, ExternalUrlError> {
+    let url = raw.trim();
+    if url.is_empty() {
+        return Err(ExternalUrlError::Empty);
+    }
+    if url.len() > 2048 || url.chars().any(|c| c.is_control()) {
+        return Err(ExternalUrlError::TooLong);
+    }
+    let lower = url.to_ascii_lowercase();
+    let rest = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+        .ok_or(ExternalUrlError::UnsupportedScheme)?;
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.is_empty() {
+        return Err(ExternalUrlError::MissingHost);
+    }
+    if authority.contains('@') {
+        return Err(ExternalUrlError::CredentialsNotAllowed);
+    }
+    let (host, port) = if let Some(inner) = rest.split('/').next().unwrap_or("").strip_prefix('[') {
+        // IPv6 literal：外壳不构造这类外链，直接拒绝以免端口/区域 ID 解析歧义。
+        let _ = inner;
+        return Err(ExternalUrlError::LocalTarget);
+    } else {
+        match authority.rfind(':') {
+            Some(i) => {
+                let p = &authority[i + 1..];
+                if p.is_empty() || !p.bytes().all(|b| b.is_ascii_digit()) {
+                    return Err(ExternalUrlError::InvalidPort);
+                }
+                let n: u32 = p.parse().map_err(|_| ExternalUrlError::InvalidPort)?;
+                if n == 0 || n > 65535 {
+                    return Err(ExternalUrlError::InvalidPort);
+                }
+                (&authority[..i], Some(n))
+            }
+            None => (authority, None),
+        }
+    };
+    let _ = port;
+    let host = host.trim_end_matches('.');
+    if host.is_empty() {
+        return Err(ExternalUrlError::MissingHost);
+    }
+    if host == "localhost" || host.ends_with(".localhost") || host.ends_with(".local") {
+        return Err(ExternalUrlError::LocalTarget);
+    }
+    if let Some(ip) = parse_ipv4(host) {
+        if is_local_ipv4(ip) {
+            return Err(ExternalUrlError::LocalTarget);
+        }
+    }
+    Ok(url.to_string())
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DenyReason {
     /// 插件未声明该能力（默认拒绝）。
@@ -815,6 +932,50 @@ mod tests {
         assert_eq!(gate.audit_log().back().unwrap().plugin, "stranger");
         gate.clear_audit();
         assert!(gate.audit_log().is_empty());
+    }
+
+    #[test]
+    fn external_url_validator_accepts_public_http_links() {
+        assert_eq!(
+            validate_external_http_url(" https://example.com/docs?a=1 "),
+            Ok("https://example.com/docs?a=1".to_string())
+        );
+        assert!(validate_external_http_url("http://8.8.8.8:8080/x").is_ok());
+    }
+
+    #[test]
+    fn external_url_validator_blocks_dangerous_and_local_targets() {
+        for bad in [
+            "javascript:alert(1)",
+            "file:///etc/passwd",
+            "https://",
+            "https://user:pass@example.com",
+            "https://localhost:5173",
+            "http://127.0.0.1",
+            "http://192.168.1.1",
+            "http://169.254.169.254/latest/meta-data/",
+            "http://10.0.0.1",
+            "https://[::1]/",
+            "https://example.com:70000",
+            "https://example.com:abc",
+        ] {
+            assert!(
+                validate_external_http_url(bad).is_err(),
+                "危险外链必须被拒绝：{bad}"
+            );
+        }
+    }
+
+    #[test]
+    fn external_url_error_has_actionable_message() {
+        assert_eq!(
+            validate_external_http_url("file:///etc/passwd").unwrap_err().message(),
+            "只允许 http:// 或 https:// 链接"
+        );
+        assert_eq!(
+            validate_external_http_url("http://127.0.0.1").unwrap_err().message(),
+            "不允许用系统浏览器打开本机 / 内网地址"
+        );
     }
 
     #[test]

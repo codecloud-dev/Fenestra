@@ -11,7 +11,8 @@
 //! 闸门的 `Untrusted<T>` 出站重校验与可逆登记同样来自 `crates/gate`
 //! （纯 Rust、零系统依赖，可独立 `cargo test`）。
 
-use fenestra_gate::{Capability, Gate};
+use fenestra_gate::{validate_external_http_url, Capability, Gate};
+use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
 /// 可替换渲染引擎接口层。新增引擎（如 Servo）只需实现此 trait 并注册，
@@ -129,6 +130,40 @@ fn gate_audit() -> Vec<String> {
         .collect()
 }
 
+/// 用系统浏览器打开外链。前端展示层不内嵌网页引擎，点击后走这里；
+/// 地址先经闸门同款出站校验，拒绝 file:// / javascript: / 本机内网地址。
+#[tauri::command]
+fn open_external(url: String) -> Result<(), String> {
+    let safe = validate_external_http_url(&url)
+        .map_err(|e| e.message().to_string())?;
+
+    #[cfg(target_os = "android")]
+    let opened = Command::new("am")
+        .args(["start", "-a", "android.intent.action.VIEW", "-d", &safe])
+        .status();
+
+    #[cfg(all(not(target_os = "android"), target_os = "windows"))]
+    let opened = Command::new("cmd")
+        .args(["/C", "start", "", &safe])
+        .status();
+
+    #[cfg(all(not(target_os = "android"), target_os = "macos"))]
+    let opened = Command::new("open").arg(&safe).status();
+
+    #[cfg(all(
+        not(target_os = "android"),
+        not(target_os = "windows"),
+        not(target_os = "macos")
+    ))]
+    let opened = Command::new("xdg-open").arg(&safe).status();
+
+    match opened {
+        Ok(s) if s.success() => Ok(()),
+        Ok(s) => Err(format!("系统浏览器返回退出码 {}", s.code().unwrap_or(-1))),
+        Err(e) => Err(format!("无法启动系统浏览器：{e}")),
+    }
+}
+
 /// 返回当前注册的渲染引擎名（供前端 / 调试确认引擎替换是否生效）。
 #[tauri::command]
 fn engine_name() -> String {
@@ -144,7 +179,9 @@ fn engine_name() -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![gate_check, gate_audit, engine_name])
+        .invoke_handler(tauri::generate_handler![
+            gate_check, gate_audit, engine_name, open_external
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Fenestra shell");
 }

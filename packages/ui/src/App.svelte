@@ -93,6 +93,31 @@
     if (!looksLikeHost) return SEARCH_PREFIX + encodeURIComponent(v)
     return 'https://' + v
   }
+  type TauriInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>
+
+  /**
+   * 浏览器预览态用新标签打开；Tauri 外壳里走 Rust `open_external`，
+   * 由闸门同一套 URL 校验拦住 file:// / javascript: / 本机内网地址。
+   */
+  async function openExternal(raw: string): Promise<void> {
+    const url = raw.trim()
+    if (!url) return
+    const invoke = (window as Window & {
+      __TAURI_INTERNALS__?: { invoke?: TauriInvoke }
+    }).__TAURI_INTERNALS__?.invoke
+    if (invoke) {
+      try {
+        await invoke('open_external', { url })
+        return
+      } catch (e) {
+        window.alert(`无法打开外链：${e instanceof Error ? e.message : String(e)}`)
+        return
+      }
+    }
+    const opened = window.open(url, '_blank', 'noopener,noreferrer')
+    if (!opened) window.alert('浏览器拦截了新窗口，请手动复制地址栏链接打开')
+  }
+
   function sync(t: Tab): void {
     t.url = t.history[t.cursor] ?? HOME
     t.title = titleOf(t.url)
@@ -583,8 +608,11 @@
             </p>
           {:else}
             <p class="page__note">
-              网页由系统 WebView 承载。地址栏、前进 / 后退、标签切换与权限裁决均已真实运行。
+              当前壳只呈现地址与权限状态，不在窗口内加载网页；点击下方按钮交给系统浏览器打开。
             </p>
+            <button class="page__open" onclick={() => activeTab && openExternal(activeTab.url)}>
+              用系统浏览器打开
+            </button>
           {/if}
         </section>
       {/if}

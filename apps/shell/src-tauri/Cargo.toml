@@ -1,6 +1,6 @@
 [package]
 name = "fenestra-shell"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 rust-version = "1.77.2"
 description = "Fenestra Tauri 2 外壳：渲染引擎抽象为可替换接口层"
