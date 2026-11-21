@@ -50,8 +50,8 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 直接用 ubuntu runner 预装的 Android SDK：setup-android@v3 会去请求早已废弃的
-      # "tools" 包，在 2026 的 runner 上直接 sdkmanager 退出 1（真机实测失败点）。
+      # 直接用 ubuntu runner 预装的 Android SDK：setup-android@v3 会去请求已废弃的
+      # "tools" 包，导致 sdkmanager 失败。
       # runner 镜像自带 /usr/local/lib/android/sdk/cmdline-tools/16.0/bin/sdkmanager。
       - name: 注入预装 Android SDK 环境
         run: |

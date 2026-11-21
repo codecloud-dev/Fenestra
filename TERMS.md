@@ -59,7 +59,7 @@ README「现在做到哪一步」如实标注：当前为 **Stage 1 脚手架**�
   - 在用户未逐项确认时启用隐私红线能力，或默认收集 / 上传浏览历史、页面内容、剪贴板、位置、凭据、设备指纹、植入未明示同意且可随时关闭的遥测（第 6.1 条、第 6.8 条③）；
   - 人为引入启动等待、强制广告、限速、无谓后台常驻、联网阻塞，或以商业 / 推广 / 遥测目的故意降低性能（第 6.4 / 6.5 条）；人为阻断三家扩展兼容层（第 6.6 条）；移除「卸载插件 / 换引擎 / 导出数据 / 完全离线运行」能力或锁定单一商店（第 6.3 条）；
   - **绕过第六节的商业授权与付费门禁**：伪造授权、破解授权校验、伪造电子授权凭证、规避第 4.5 条到期自动失效、冒用他人商业授权、以非商业许可包装商业使用、「先用后补」；
-  - 以任何方式规避本系列（moxsh-terminal / moxsh-proot / mox-id / mox-site）已有的兑换码、设备绑定或授权门禁。
+  - 以任何方式规避本系列（moxsh-terminal / moxsh-proot / 账号服务 / 官网）已有的兑换码、设备绑定或授权门禁。
 - 上述禁止不扩张为「禁止一切逆向」：两份许可授予的阅读、修改、审计、评测、再分发权利完整保留；被禁止的是**用于绕过授权、规避付费、或使第 6 条 / 第 6.8 条保护性条款事实上失效**的具体滥用行为。`LICENSE-COMMERCIAL` 第 6 条按「普通用户能否实际获得该能力」判定，而不是按代码里是否存在某个开关判定。
 
 ---
@@ -214,7 +214,7 @@ Where these terms conflict with `LICENSE` or `LICENSE-COMMERCIAL`, **the licence
   - Enabling privacy red-line capabilities without per-item user confirmation, or collecting/uploading by default browsing history, page content, clipboard, location, credentials, device fingerprints, or embedding telemetry without explicit consent that can be turned off (§6.1, §6.8 ③);
   - Artificially adding startup waits, forced ads, throttling, needless background residency, network blocking, or deliberately degrading performance for commercial / promotional / telemetry purposes (§6.4 / §6.5); artificially blocking the three extension compatibility layers (§6.6); removing the ability to uninstall plugins / swap engines / export data / run fully offline, or locking to a single store (§6.3);
   - **Bypassing §6's commercial-licensing and payment gates**: forging licences, cracking authorisation checks, forging electronic licence certificates, evading §4.5 automatic expiry, using another's commercial licence, disguising commercial use as non-commercial, or "use first, pay later";
-  - In any way evading existing redeem-code, device-binding, or authorisation gates of this series (moxsh-terminal / moxsh-proot / mox-id / mox-site).
+  - In any way evading existing redeem-code, device-binding, or authorisation gates of this series (moxsh-terminal / moxsh-proot / account service / website).
 - This does **not** expand into "all reverse engineering is forbidden": the reading, modification, auditing, evaluation and redistribution rights granted by both licences remain intact; what is prohibited is the specific abusive conduct of bypassing authorisation, evading payment, or making §6 / §6.8's protective clauses ineffective in fact. `LICENSE-COMMERCIAL` §6 is judged by "whether an ordinary user can actually obtain the capability", not by whether a switch exists in the code.
 
 ## 6. Special clause: commercial use (Fenestra)

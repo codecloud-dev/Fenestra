@@ -5,11 +5,8 @@
 //!   - Servo 降为 Stage 1 的「第一个可替换引擎插件」，实现同一 trait 后在注册表中接入；
 //!   - 引擎是「注册」而非「编译期绑定」，运行时保留替换点。
 //!
-//! 安全说明：`gate_check` 不再用硬编码允许列表占位，而是真正调用 `fenestra_gate::Gate`
-//! 的 `check_permission`：默认拒绝、声明 ∩ 策略、隐私逐项确认全部由同一套闸门裁决，
-//! 且每次裁决（含拒绝原因）都进入有界审计日志，可由 `gate_audit` IPC 读取。
-//! 闸门的 `Untrusted<T>` 出站重校验与可逆登记同样来自 `crates/gate`
-//! （纯 Rust、零系统依赖，可独立 `cargo test`）。
+//! 权限裁决真正委托给 `fenestra_gate::Gate`（默认拒绝 + 最小权限交集），
+//! 每次裁决写入有界审计日志，可由 `gate_audit` IPC 读取。
 
 use fenestra_gate::{validate_external_http_url, Capability, Gate};
 use std::process::Command;
