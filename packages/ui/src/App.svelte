@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte'
+  import { rubberBand } from './gesture.js'
 
   // ==========================================================================
   // 状态：一个极简浏览器壳的数据模型。
@@ -397,6 +398,8 @@
   let dragMoved = false
   let suppressClick = false
 
+  // Apple 式橡皮边界：物理参数与纯函数见 gesture.ts（可脱离浏览器单测）。
+
   // 拖拽超过阈值后，紧随 pointerup 的那次 click 不应误触标签切换 / 新建。
   function onTabsClickCapture(ev: MouseEvent): void {
     if (!suppressClick) return
@@ -427,7 +430,9 @@
     const dt = Math.max(1, now - drag.lastT)
     const dx = e.clientX - drag.lastX
     if (Math.abs(e.clientX - drag.startX) > 4) dragMoved = true
-    tabsEl.scrollLeft = drag.startScroll - (e.clientX - drag.startX)
+    const raw = drag.startScroll - (e.clientX - drag.startX)
+    const max = Math.max(0, tabsEl.scrollWidth - tabsEl.clientWidth)
+    tabsEl.scrollLeft = rubberBand(raw, 0, max)
     // 速度低通，抑制单点抖动；单位 px/ms。
     drag.v = drag.v * 0.6 + (dx / dt) * 0.4
     drag.lastX = e.clientX
@@ -440,11 +445,22 @@
     if (!drag.active || !tabsEl) return
     drag.active = false
     suppressClick = dragMoved
+    const max = Math.max(0, tabsEl.scrollWidth - tabsEl.clientWidth)
+    const now = tabsEl.scrollLeft
+    // 停在橡皮区外时先弹回边界（即便没有抛动），避免卡在越界位置。
+    if (now < 0 || now > max) {
+      cancelFling = springTo(
+        (x) => { if (tabsEl) tabsEl.scrollLeft = x },
+        now,
+        clamp(now, 0, max),
+        readSpring('rest'),
+      )
+      return
+    }
     if (reducedMotion() || Math.abs(drag.v) < 0.25) return
     const vFrame = drag.v * (1000 / 60) // px/帧
     const d = decelerationRate()
     const projected = (vFrame * d) / (1 - d)
-    const max = Math.max(0, tabsEl.scrollWidth - tabsEl.clientWidth)
     // 手指向右滑（v>0）时 scrollLeft 继续减小，故取减号。
     const target = clamp(tabsEl.scrollLeft - projected, 0, max)
     cancelFling = springTo(

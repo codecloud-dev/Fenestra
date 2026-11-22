@@ -1,6 +1,6 @@
 {
   "name": "@fenestra/ui",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Fenestra 浏览器前端壳：地址栏 / 前进后退刷新 / 新标签页 / 插件管理页（Svelte 5 + Vite 8）",
@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test src/gesture.test.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "7.3.1",

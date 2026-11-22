@@ -168,7 +168,7 @@ TS 侧的「可逆」由 Cordis 4 `ctx.effect / provide / on` 保证：插件登
 - 归档分支的 tree 与当时的 main **完全一致**：`git ls-tree -r` 计数 **37** 个追踪文件；在归档 worktree 实跑 `cargo test` → **33 单元 + 6 集成 = 39 个测试全绿**。
 - 口径说明：方向定稿 §7 写「46 文件」，而 git 实际追踪为 37（含 `.github/` 等）。以 `git ls-tree` 为准；「保留全部文件、不丢 39 测试」的目标已达成，未删除任何追踪文件。
 - **迁移的是设计，不是代码**：默认拒绝、最小权限交集、隐私红线显式确认、`Untrusted<T>` 出站重校验、可逆登记，都在新架构里重新实现（见 [crates/gate](./crates/gate/)）。
-- 归档分支里的三家扩展归一器与 6 个集成测试，留待 Stage 2 做 Chrome / Edge / Firefox MV3 兼容时直接取回。
+- 归档分支里的归一器思路已在 Stage 2 落地：新架构在 `crates/gate/src/mv3.rs` 实现了 Manifest V3 清单解析、合规校验与能力归一（默认拒绝、未知权限不放行），配 5 个单测；完整三家兼容仍是 Stage 2 的硬验收项，逐条覆盖见 [EXTENSIONS.md](./EXTENSIONS.md)。
 
 主干 `main` 已从 Cordis 4 + Tauri 2 + Svelte + Vite + pnpm + Cargo 重新起脚手架，旧内核代码不迁移。
 

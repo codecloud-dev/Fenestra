@@ -2,6 +2,20 @@
 
 > 格式：按版本倒序。所有「通过」均来自真实执行，不写未验证的性能数字、不承诺工期。
 
+## 0.2.0 · MV3 清单归一层（2026-11-22）
+
+### 新增
+
+- `fenestra_gate::mv3`：Manifest V3 扩展清单的解析、合规校验与能力归一。零第三方依赖，带只读取所需字段的极简 JSON 解析器。
+  - `Mv3Manifest::parse()` 读取 `manifest_version` / `permissions` / `host_permissions` / `background.service_worker` / `action` 等字段；
+  - `validate()` 校验 MV3 硬约束（必须为 v3、禁用 `webRequestBlocking`、主机权限不得混入 `permissions`、远程代码告警）；
+  - `to_capabilities()` / `to_fep_permissions()` 按默认拒绝把 MV3 权限映射到 Fenestra 能力，未知权限忽略。
+- 5 个单测覆盖三家清单解析、能力映射、MV2/blocking 拒绝、未知权限默认拒绝、畸形 JSON；workspace 全量测试通过。
+
+### 说明
+
+- 当前只做「清单 → 能力」归一与守门；三家扩展的运行时 API 代理仍属后续工作，不声称已完成完整 MV3 兼容。
+
 ## 0.1.2 · 用户可见的可用性与可观测性（2026-11-21）
 
 ### 修复

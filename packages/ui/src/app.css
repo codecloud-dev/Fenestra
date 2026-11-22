@@ -573,6 +573,7 @@ button {
 
 .tab__close,
 .tab__new {
+  position: relative;
   flex: 0 0 auto;
   width: 28px;
   height: 30px;
@@ -580,6 +581,24 @@ button {
   place-items: center;
   border-radius: 999px;
   color: var(--muted);
+}
+
+/* 触控热区 ≥44pt（Apple HIG / Material 48dp 底线）：用透明伪元素向四周扩展，
+   只放大可点区域，不改变视觉尺寸与布局，避免图标显得笨重。 */
+.tab__close::before,
+.tab__new::before,
+.icon-btn::before,
+.sheet__close::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
 }
 
 .tab__close .ico {
@@ -613,6 +632,7 @@ button {
 }
 
 .icon-btn {
+  position: relative;
   flex: 0 0 auto;
   width: 34px;
   height: 38px;
@@ -747,6 +767,7 @@ button {
 }
 
 .sheet__close {
+  position: relative;
   flex: 0 0 auto;
   width: 32px;
   height: 32px;

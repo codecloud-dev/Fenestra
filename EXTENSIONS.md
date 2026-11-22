@@ -59,11 +59,14 @@ export const myPlugin: PluginDefinition = {
 
 能力用点分字符串（如 `ui.newtab`、`net.dns`、`net.preconnect`）。涉及剪贴板 / 档案 / 摄像头 / 位置 / 遥测的能力属于隐私红线，须用户逐项显式确认，默认拒绝，见 [SECURITY.md](./SECURITY.md) 与 [crates/gate](./crates/gate/) 的 `Capability`。
 
-## 7. Stage 2 预留
+## 7. MV3 归一层（Stage 2 进行中）
 
-- 内核 API 不绑定任何一家扩展清单格式；
-- Stage 0 归档分支里的三家扩展归一器与 6 个集成测试，做兼容层时直接取回；
-- 兼容层允许性能差异，但 Chrome MV3 / Edge MV3 / Firefox MV3 的功能覆盖要**逐条列进文档**；
-- 自有插件在能力与性能上保持最优（一等公民）。
+- `crates/gate/src/mv3.rs` 已落地 Manifest V3 清单解析、合规校验与能力归一：
+  - 解析 `manifest_version` / `permissions` / `host_permissions` / `background.service_worker` / `action` 等字段；
+  - 校验 MV3 硬约束（必须为 v3、禁用 `webRequestBlocking`、主机权限不得混入 `permissions`）；
+  - 把 MV3 权限按默认拒绝映射为 `Capability`，未知权限一律忽略，不猜测放行；
+  - 提供 `to_fep_permissions()` 供兼容层把扩展登记进 Fenestra 运行时。
+- 当前只做「清单 → 能力」的归一与守门；三家 API 运行时代理仍属后续工作。
+- 自有插件在能力与性能上保持最优（一等公民）；兼容层允许性能差异。
 
 设计原则见 [PRINCIPLES.md](./PRINCIPLES.md)，架构见 [ARCHITECTURE.md](./ARCHITECTURE.md)。

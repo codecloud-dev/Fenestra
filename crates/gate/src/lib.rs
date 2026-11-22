@@ -15,6 +15,10 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+/// Manifest V3 扩展兼容层：解析 / 校验 / 归一到能力模型。
+pub mod mv3;
+pub use mv3::{Mv3Error, Mv3Issue, Mv3Manifest};
+
 /// Fenestra 核心能力。隐私红线能力须经用户逐项显式确认。
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Capability {
